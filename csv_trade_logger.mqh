@@ -81,14 +81,16 @@ public:
    }
 
    // Captura los datos iniciales cuando se abre una operación
-   void OnTradeOpen(ENUM_ORDER_TYPE tipo, double price, double sl, double tp, double r_top, double r_bottom, ENUM_TIMEFRAMES tf, double breakout_vol)
+   void OnTradeOpen(ENUM_ORDER_TYPE tipo, double price, double sl, double tp, double r_top, double r_bottom, ENUM_TIMEFRAMES tf, double breakout_vol, double range_size)
    {
       m_last_trade.time_open = TimeCurrent();
       m_last_trade.direction = (tipo == ORDER_TYPE_BUY) ? "LONG" : "SHORT";
       m_last_trade.entry_price = price;
       m_last_trade.sl = sl;
       m_last_trade.tp = tp;
-      m_last_trade.range_size = r_top - r_bottom;
+
+      m_last_trade.range_size = range_size;
+      
       m_last_trade.mae_pts = 0;
       m_last_trade.mfe_pts = 0;
       m_last_trade.spread = (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
@@ -107,10 +109,13 @@ public:
       // Yesterday Range
       m_last_trade.yesterday_range = iHigh(_Symbol, PERIOD_D1, 1) - iLow(_Symbol, PERIOD_D1, 1);
       
+      int digits_sym = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+      double multiplier = (digits_sym == 3 || digits_sym == 5) ? 10.0 : 1.0;
+
       if(tipo == ORDER_TYPE_BUY)
-         m_last_trade.dist_breakout = (price - r_top) / _Point;
+         m_last_trade.dist_breakout = (price - r_top) / (_Point * multiplier);
       else
-         m_last_trade.dist_breakout = (r_bottom - price) / _Point;
+         m_last_trade.dist_breakout = (r_bottom - price) / (_Point * multiplier);
 
       // SMA 200 Trend (H1)
       double sma_buffer[];
@@ -248,7 +253,7 @@ private:
             DoubleToString(m_last_trade.breakout_volume, 0),
             IntegerToString(duration),
             IntegerToString(m_last_trade.spread),
-            DoubleToString(m_last_trade.range_size, _Digits),
+            DoubleToString(m_last_trade.range_size, 1),
             DoubleToString(m_last_trade.atr_val, _Digits),
             DoubleToString(m_last_trade.yesterday_range, _Digits),
             DoubleToString(m_last_trade.dist_breakout, _Digits),
