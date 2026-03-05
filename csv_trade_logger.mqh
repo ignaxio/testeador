@@ -32,7 +32,7 @@ private:
       double   mae_pts;
       double   mfe_pts;
       string   sma_trend;
-      double   volume_ratio;
+      double   breakout_volume;
       int      spread;
    } m_last_trade;
 
@@ -72,7 +72,7 @@ public:
             FileWrite(handle, 
                "Date", "Time", "Direction", "EntryPrice", "StopLoss", "TakeProfit", 
                "ResultPoints", "ResultR", "MAE_Points", "MFE_Points", "SMA200_Trend", 
-               "Volume_Ratio", "Duration_Minutes", "Spread_Entry",
+               "Breakout_Volume", "Duration_Minutes", "Spread_Entry",
                "OpeningRangeSize", "ATR", "YesterdayRange", "DistanceBreakout", "DayOfWeek", "Month"
             );
             FileClose(handle);
@@ -81,7 +81,7 @@ public:
    }
 
    // Captura los datos iniciales cuando se abre una operación
-   void OnTradeOpen(ENUM_ORDER_TYPE tipo, double price, double sl, double tp, double r_top, double r_bottom, ENUM_TIMEFRAMES tf)
+   void OnTradeOpen(ENUM_ORDER_TYPE tipo, double price, double sl, double tp, double r_top, double r_bottom, ENUM_TIMEFRAMES tf, double breakout_vol)
    {
       m_last_trade.time_open = TimeCurrent();
       m_last_trade.direction = (tipo == ORDER_TYPE_BUY) ? "LONG" : "SHORT";
@@ -122,22 +122,20 @@ public:
       }
       else m_last_trade.sma_trend = "UNKNOWN";
 
-      // Volume Ratio
-      long volume_buffer[];
-      if(CopyTickVolume(_Symbol, tf, 0, 21, volume_buffer) >= 21)
-      {
-         double sum = 0;
-         for(int i=1; i<21; i++) sum += (double)volume_buffer[i];
-         double avg_vol = sum / 20.0;
-         if(avg_vol > 0)
-            m_last_trade.volume_ratio = (double)volume_buffer[0] / avg_vol;
-         else
-            m_last_trade.volume_ratio = 1.0;
-      }
-      else m_last_trade.volume_ratio = 1.0;
+      // Datos de Volumen
+      m_last_trade.breakout_volume = breakout_vol;
    }
 
    void SetActiveTicket(long ticket) { m_last_trade.ticket = ticket; }
+
+   // Obtiene el volumen real de la vela indicada (0=actual, 1=cerrada)
+   long GetRealVolume(ENUM_TIMEFRAMES tf, int index)
+   {
+      long volume_buffer[];
+      if(CopyTickVolume(_Symbol, tf, index, 1, volume_buffer) > 0)
+         return volume_buffer[0];
+      return 0;
+   }
 
    // Actualiza MAE/MFE y detecta el cierre
    void OnTick()
@@ -247,7 +245,7 @@ private:
             DoubleToString(m_last_trade.mae_pts, 1),
             DoubleToString(m_last_trade.mfe_pts, 1),
             m_last_trade.sma_trend,
-            DoubleToString(m_last_trade.volume_ratio, 2),
+            DoubleToString(m_last_trade.breakout_volume, 0),
             IntegerToString(duration),
             IntegerToString(m_last_trade.spread),
             DoubleToString(m_last_trade.range_size, _Digits),
