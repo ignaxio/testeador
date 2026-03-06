@@ -47,3 +47,45 @@ double CalcularLotePorRiesgo(int sl_points, double risk_percent)
 
    return NormalizeDouble(lote, digitos_lote);
 }
+
+// --- Gestión de SL Dinámico ---
+void AplicarGestionSLDinamico(long magic, bool activar, double ratio_act, double porc_nuevo)
+{
+   if(!activar) return;
+
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket > 0 && PositionGetInteger(POSITION_MAGIC) == magic)
+      {
+         double precio_ent = PositionGetDouble(POSITION_PRICE_OPEN);
+         double sl_actual  = PositionGetDouble(POSITION_SL);
+         double tp_actual  = PositionGetDouble(POSITION_TP);
+         double precio_act = PositionGetDouble(POSITION_PRICE_CURRENT);
+         ENUM_POSITION_TYPE tipo = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+
+         double distancia_r = MathAbs(precio_ent - sl_actual);
+         if(distancia_r <= 0) continue;
+
+         double beneficio_puntos = (tipo == POSITION_TYPE_BUY) ? (precio_act - precio_ent) : (precio_ent - precio_act);
+         double r_actual = beneficio_puntos / distancia_r;
+
+         if(r_actual >= ratio_act)
+         {
+            double nuevo_sl;
+            if(tipo == POSITION_TYPE_BUY)
+               nuevo_sl = precio_ent - (distancia_r * (1.0 - (porc_nuevo / 100.0)));
+            else
+               nuevo_sl = precio_ent + (distancia_r * (1.0 - (porc_nuevo / 100.0)));
+
+            // Verificar si el movimiento es una mejora para evitar errores de modificación
+            if((tipo == POSITION_TYPE_BUY && nuevo_sl > sl_actual + _Point) || (tipo == POSITION_TYPE_SELL && nuevo_sl < sl_actual - _Point))
+            {
+               CTrade trade_mod;
+               trade_mod.PositionModify(ticket, nuevo_sl, tp_actual);
+               Print("SL Dinámico: Ticket ", ticket, " movido a ", nuevo_sl, " (R actual: ", NormalizeDouble(r_actual, 2), ")");
+            }
+         }
+      }
+   }
+}

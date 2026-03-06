@@ -36,6 +36,9 @@ double          ratio;
 bool            sl_fijo;
 double          Lots;
 double          porcentaje_riesgo;
+bool            usar_mover_sl_a_be;
+double          ratio_activacion_be;
+double          porcentaje_sl_nuevo;
 
 bool            usar_filtro_volumen;
 int             volumen_limite;
@@ -101,6 +104,9 @@ void EngineOnTick()
 
    if(cerramos_trades)
       GestionarCierrePorHora();
+
+   // Nueva gestión de SL
+   AplicarGestionSLDinamico(MagicNumber, usar_mover_sl_a_be, ratio_activacion_be, porcentaje_sl_nuevo);
 
    logger.OnTick();
 }
