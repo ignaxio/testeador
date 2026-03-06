@@ -46,6 +46,7 @@ bool            usar_filtro_opening_range_size;
 double          opening_range_size;
 bool            usar_filtro_distancia_ruptura;
 double          distancia_ruptura_maxima;
+bool            usar_filtro_exclusion_rango;
 
 int             MagicNumber;
 string          nombre_estrategia;
@@ -232,6 +233,7 @@ void EvaluarEntrada()
    if(!ValidarRangoSize(usar_filtro_opening_range_size, range_in_points, opening_range_size)) return;
    if(!ValidarVolumen(usar_filtro_volumen, breakout_vol, volumen_limite)) return;
    if(!ValidarDistanciaRuptura(usar_filtro_distancia_ruptura, dist_breakout, distancia_ruptura_maxima)) return;
+   if(!ValidarExclusionRango(usar_filtro_exclusion_rango, range_in_points)) return;
    
    double precio_ejec = precio_actual_para_dist;
    double sl_ejec, tp_ejec;

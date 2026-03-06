@@ -43,3 +43,16 @@ bool ValidarDistanciaRuptura(bool usar_filtro, double dist_points, double limit)
    }
    return true;
 }
+
+bool ValidarExclusionRango(bool activar, double range_size)
+{
+   if(!activar) return true;
+
+   // Si el tamaño está entre 3300 y 4700, NO OPERAR
+   if(range_size > 3300.0 && range_size < 4700.0)
+   {
+      Print("Operación cancelada: Opening Range Size (", range_size, ") está en zona de exclusión (3300-4700)");
+      return false;
+   }
+   return true;
+}

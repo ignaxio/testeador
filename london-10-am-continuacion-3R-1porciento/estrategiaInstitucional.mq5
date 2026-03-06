@@ -46,6 +46,7 @@ int OnInit()
    opening_range_size            = 2000;
    usar_filtro_distancia_ruptura  = false;
    distancia_ruptura_maxima      = 10.0;
+   usar_filtro_exclusion_rango   = true;
    
    // --- Sistema ---
    MagicNumber       = 99901;

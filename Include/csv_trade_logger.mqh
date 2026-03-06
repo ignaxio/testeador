@@ -7,6 +7,50 @@
 #property link      "https://www.mql5.com"
 #property strict
 
+#include <Arrays\ArrayObj.mqh>
+
+//+------------------------------------------------------------------+
+//| Clase para almacenar datos de un trade específico                |
+//+------------------------------------------------------------------+
+class CTradeData : public CObject
+{
+public:
+   datetime time_open;
+   string   direction;
+   double   entry_price;
+   double   sl;
+   double   tp;
+   double   range_size;
+   double   atr_val;
+   double   yesterday_range;
+   double   dist_breakout;
+   long     ticket;
+   double   mae_pts;
+   double   mfe_pts;
+   string   sma_trend;
+   double   breakout_volume;
+   int      spread;
+
+   CTradeData()
+   {
+      time_open = 0;
+      direction = "";
+      entry_price = 0;
+      sl = 0;
+      tp = 0;
+      range_size = 0;
+      atr_val = 0;
+      yesterday_range = 0;
+      dist_breakout = 0;
+      ticket = 0;
+      mae_pts = 0;
+      mfe_pts = 0;
+      sma_trend = "";
+      breakout_volume = 0;
+      spread = 0;
+   }
+};
+
 //+------------------------------------------------------------------+
 //| Clase para el logueo de trades en CSV                           |
 //+------------------------------------------------------------------+
@@ -16,32 +60,13 @@ private:
    string            m_filename;
    string            m_subfolder;
    int               m_handle_sma200;
-
-   struct TradeLogData
-   {
-      datetime time_open;
-      string   direction;
-      double   entry_price;
-      double   sl;
-      double   tp;
-      double   range_size;
-      double   atr_val;
-      double   yesterday_range;
-      double   dist_breakout;
-      long     ticket;
-      double   mae_pts;
-      double   mfe_pts;
-      string   sma_trend;
-      double   breakout_volume;
-      int      spread;
-   } m_last_trade;
+   CArrayObj         m_active_trades;
 
 public:
    CCSVTradeLogger()
    {
       m_subfolder = "probadorEstrategiasRupturaRango_tests\\";
       m_handle_sma200 = INVALID_HANDLE;
-      m_last_trade.ticket = 0;
    }
 
    ~CCSVTradeLogger()
@@ -70,7 +95,7 @@ public:
          {
             Print("Creando nuevo archivo CSV en carpeta COMMON: ", m_filename);
             FileWrite(handle, 
-               "Date", "Time", "Direction", "EntryPrice", "StopLoss", "TakeProfit", 
+               "Date", "TimeOpen", "TimeClose", "Direction", "EntryPrice", "StopLoss", "TakeProfit", 
                "ResultPoints", "ResultR", "MAE_Points", "MFE_Points", "SMA200_Trend", 
                "Breakout_Volume", "Duration_Minutes", "Spread_Entry",
                "OpeningRangeSize", "ATR", "YesterdayRange", "DistanceBreakout", "DayOfWeek", "Month"
@@ -83,17 +108,16 @@ public:
    // Captura los datos iniciales cuando se abre una operación
    void OnTradeOpen(ENUM_ORDER_TYPE tipo, double price, double sl, double tp, double r_top, double r_bottom, ENUM_TIMEFRAMES tf, double breakout_vol, double range_size, double dist_breakout)
    {
-      m_last_trade.time_open = TimeCurrent();
-      m_last_trade.direction = (tipo == ORDER_TYPE_BUY) ? "LONG" : "SHORT";
-      m_last_trade.entry_price = price;
-      m_last_trade.sl = sl;
-      m_last_trade.tp = tp;
-
-      m_last_trade.range_size = range_size;
-      
-      m_last_trade.mae_pts = 0;
-      m_last_trade.mfe_pts = 0;
-      m_last_trade.spread = (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+      CTradeData *new_trade = new CTradeData();
+      new_trade.time_open = TimeCurrent();
+      new_trade.direction = (tipo == ORDER_TYPE_BUY) ? "LONG" : "SHORT";
+      new_trade.entry_price = price;
+      new_trade.sl = sl;
+      new_trade.tp = tp;
+      new_trade.range_size = range_size;
+      new_trade.mae_pts = 0;
+      new_trade.mfe_pts = 0;
+      new_trade.spread = (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
       
       // ATR(14)
       int handle_atr = iATR(_Symbol, tf, 14);
@@ -102,14 +126,13 @@ public:
          double atr_buffer[];
          ArraySetAsSeries(atr_buffer, true);
          if(CopyBuffer(handle_atr, 0, 0, 1, atr_buffer) > 0)
-            m_last_trade.atr_val = atr_buffer[0];
+            new_trade.atr_val = atr_buffer[0];
          IndicatorRelease(handle_atr);
       }
 
       // Yesterday Range
-      m_last_trade.yesterday_range = iHigh(_Symbol, PERIOD_D1, 1) - iLow(_Symbol, PERIOD_D1, 1);
-      
-      m_last_trade.dist_breakout = dist_breakout;
+      new_trade.yesterday_range = iHigh(_Symbol, PERIOD_D1, 1) - iLow(_Symbol, PERIOD_D1, 1);
+      new_trade.dist_breakout = dist_breakout;
 
       // SMA 200 Trend (H1)
       double sma_buffer[];
@@ -117,15 +140,25 @@ public:
       if(CopyBuffer(m_handle_sma200, 0, 0, 1, sma_buffer) > 0)
       {
          double current_price = iClose(_Symbol, PERIOD_H1, 0);
-         m_last_trade.sma_trend = (current_price > sma_buffer[0]) ? "ABOVE" : "BELOW";
+         new_trade.sma_trend = (current_price > sma_buffer[0]) ? "ABOVE" : "BELOW";
       }
-      else m_last_trade.sma_trend = "UNKNOWN";
+      else new_trade.sma_trend = "UNKNOWN";
 
       // Datos de Volumen
-      m_last_trade.breakout_volume = breakout_vol;
+      new_trade.breakout_volume = breakout_vol;
+      
+      m_active_trades.Add(new_trade);
    }
 
-   void SetActiveTicket(long ticket) { m_last_trade.ticket = ticket; }
+   void SetActiveTicket(long ticket) 
+   { 
+      if(m_active_trades.Total() > 0)
+      {
+         CTradeData *last = (CTradeData*)m_active_trades.At(m_active_trades.Total() - 1);
+         if(last != NULL)
+            last.ticket = ticket;
+      }
+   }
 
    // Obtiene el volumen real de la vela indicada (0=actual, 1=cerrada)
    long GetRealVolume(ENUM_TIMEFRAMES tf, int index)
@@ -139,42 +172,46 @@ public:
    // Actualiza MAE/MFE y detecta el cierre
    void OnTick()
    {
-      if(m_last_trade.ticket == 0)
-         return;
-
-      if(PositionSelectByTicket(m_last_trade.ticket))
+      for(int i = m_active_trades.Total() - 1; i >= 0; i--)
       {
-         double current_price = PositionGetDouble(POSITION_PRICE_CURRENT);
-         double open_price = PositionGetDouble(POSITION_PRICE_OPEN);
-         ENUM_POSITION_TYPE pos_type = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+         CTradeData *trade_data = (CTradeData*)m_active_trades.At(i);
+         if(trade_data == NULL || trade_data.ticket == 0)
+            continue;
 
-         double current_profit_pts = 0;
-         if(pos_type == POSITION_TYPE_BUY)
-            current_profit_pts = (current_price - open_price) / _Point;
-         else
-            current_profit_pts = (open_price - current_price) / _Point;
-
-         if(current_profit_pts > m_last_trade.mfe_pts)
-            m_last_trade.mfe_pts = current_profit_pts;
-            
-         if(current_profit_pts < 0)
+         if(PositionSelectByTicket(trade_data.ticket))
          {
-            double loss_pts = MathAbs(current_profit_pts);
-            if(loss_pts > m_last_trade.mae_pts)
-               m_last_trade.mae_pts = loss_pts;
+            double current_price = PositionGetDouble(POSITION_PRICE_CURRENT);
+            double open_price = PositionGetDouble(POSITION_PRICE_OPEN);
+            ENUM_POSITION_TYPE pos_type = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+
+            double current_profit_pts = 0;
+            if(pos_type == POSITION_TYPE_BUY)
+               current_profit_pts = (current_price - open_price) / _Point;
+            else
+               current_profit_pts = (open_price - current_price) / _Point;
+
+            if(current_profit_pts > trade_data.mfe_pts)
+               trade_data.mfe_pts = current_profit_pts;
+               
+            if(current_profit_pts < 0)
+            {
+               double loss_pts = MathAbs(current_profit_pts);
+               if(loss_pts > trade_data.mae_pts)
+                  trade_data.mae_pts = loss_pts;
+            }
          }
-      }
-      else
-      {
-         // La posición se ha cerrado
-         DetectAndLogClose();
+         else
+         {
+            // La posición se ha cerrado
+            DetectAndLogClose(trade_data, i);
+         }
       }
    }
 
 private:
-   void DetectAndLogClose()
+   void DetectAndLogClose(CTradeData *trade_data, int index)
    {
-      if(HistorySelectByPosition(m_last_trade.ticket))
+      if(HistorySelectByPosition(trade_data.ticket))
       {
          int total = HistoryDealsTotal();
          for(int i = total - 1; i >= 0; i--)
@@ -187,35 +224,33 @@ private:
                {
                   double exit_price = HistoryDealGetDouble(deal_ticket, DEAL_PRICE);
                   datetime time_close = (datetime)HistoryDealGetInteger(deal_ticket, DEAL_TIME);
-                  int duration_min = (int)((time_close - m_last_trade.time_open) / 60);
+                  int duration_min = (int)((time_close - trade_data.time_open) / 60);
 
-                  WriteToCSV(exit_price, duration_min);
+                  WriteToCSV(trade_data, exit_price, time_close, duration_min);
                   
-                  Print("Trade logueado en CSV automáticamente por el logger.");
-                  m_last_trade.ticket = 0;
-                  break;
+                  Print("Trade logueado en CSV automáticamente por el logger. Ticket: ", trade_data.ticket);
+                  m_active_trades.Delete(index);
+                  return;
                }
             }
          }
       }
-      else
-      {
-         m_last_trade.ticket = 0;
-      }
+      // Si no encontramos el deal de salida pero la posicion ya no existe
+      m_active_trades.Delete(index);
    }
 
-   void WriteToCSV(double exit_price, int duration)
+   void WriteToCSV(CTradeData *trade_data, double exit_price, datetime time_close, int duration)
    {
       double res_points = 0;
-      if(m_last_trade.direction == "LONG")
-         res_points = (exit_price - m_last_trade.entry_price) / _Point;
+      if(trade_data.direction == "LONG")
+         res_points = (exit_price - trade_data.entry_price) / _Point;
       else
-         res_points = (m_last_trade.entry_price - exit_price) / _Point;
+         res_points = (trade_data.entry_price - exit_price) / _Point;
 
-      double stop_dist = MathAbs(m_last_trade.entry_price - m_last_trade.sl);
+      double stop_dist = MathAbs(trade_data.entry_price - trade_data.sl);
       double res_r = 0;
       if(stop_dist > 0)
-         res_r = (MathAbs(exit_price - m_last_trade.entry_price)) / stop_dist;
+         res_r = (MathAbs(exit_price - trade_data.entry_price)) / stop_dist;
       
       if(res_points < 0) res_r = -MathAbs(res_r);
       else res_r = MathAbs(res_r);
@@ -225,7 +260,7 @@ private:
       res_r = NormalizeDouble(res_r, 2);
 
       MqlDateTime dt;
-      TimeToStruct(m_last_trade.time_open, dt);
+      TimeToStruct(trade_data.time_open, dt);
       
       int handle = FileOpen(m_filename, FILE_READ | FILE_WRITE | FILE_CSV | FILE_ANSI | FILE_COMMON, ',');
       if(handle != INVALID_HANDLE)
@@ -233,24 +268,25 @@ private:
          Print("Escribiendo datos del trade en CSV (Carpeta COMMON)...");
          FileSeek(handle, 0, SEEK_END);
          FileWrite(handle, 
-            TimeToString(m_last_trade.time_open, TIME_DATE),
-            TimeToString(m_last_trade.time_open, TIME_MINUTES),
-            m_last_trade.direction,
-            DoubleToString(m_last_trade.entry_price, _Digits),
-            DoubleToString(m_last_trade.sl, _Digits),
-            DoubleToString(m_last_trade.tp, _Digits),
+            TimeToString(trade_data.time_open, TIME_DATE),
+            TimeToString(trade_data.time_open, TIME_MINUTES),
+            TimeToString(time_close, TIME_MINUTES),
+            trade_data.direction,
+            DoubleToString(trade_data.entry_price, _Digits),
+            DoubleToString(trade_data.sl, _Digits),
+            DoubleToString(trade_data.tp, _Digits),
             DoubleToString(res_points, 1),
             DoubleToString(res_r, 2),
-            DoubleToString(m_last_trade.mae_pts, 1),
-            DoubleToString(m_last_trade.mfe_pts, 1),
-            m_last_trade.sma_trend,
-            DoubleToString(m_last_trade.breakout_volume, 0),
+            DoubleToString(trade_data.mae_pts, 1),
+            DoubleToString(trade_data.mfe_pts, 1),
+            trade_data.sma_trend,
+            DoubleToString(trade_data.breakout_volume, 0),
             IntegerToString(duration),
-            IntegerToString(m_last_trade.spread),
-            DoubleToString(m_last_trade.range_size, 1),
-            DoubleToString(m_last_trade.atr_val, _Digits),
-            DoubleToString(m_last_trade.yesterday_range, _Digits),
-            DoubleToString(m_last_trade.dist_breakout, _Digits),
+            IntegerToString(trade_data.spread),
+            DoubleToString(trade_data.range_size, 1),
+            DoubleToString(trade_data.atr_val, _Digits),
+            DoubleToString(trade_data.yesterday_range, _Digits),
+            DoubleToString(trade_data.dist_breakout, _Digits),
             GetDayName(dt.day_of_week),
             GetMonthName(dt.mon)
          );
