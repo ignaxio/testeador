@@ -9,16 +9,10 @@
 
 #include <Trade/Trade.mqh>
 #include "csv_trade_logger.mqh"
-
-//=========================
-// ENUMS
-//=========================
-
-enum ENUM_DIRECCION
-{
-   Continuacion = 0,
-   Reversion = 1
-};
+#include "Constantes.mqh"
+#include "Utilidades.mqh"
+#include "Filtros.mqh"
+#include "GestionRiesgo.mqh"
 
 //=========================
 // VARIABLES DEL MOTOR (Configurables desde el MQ5)
@@ -90,10 +84,10 @@ int EngineOnInit()
 
 void EngineOnTick()
 {
-   if(!EsNuevaVela())
+   if(!EsNuevaVela(ultima_vela_time, time_frame))
       return;
 
-   if(EsNuevoDia())
+   if(EsNuevoDia(ultimo_dia))
       ResetearDia();
 
    if(!rango_calculado)
@@ -101,7 +95,7 @@ void EngineOnTick()
 
    if(rango_calculado && !trade_ejecutado_hoy)
    {
-      if(EstamosEnHorarioOperativo())
+      if(EstamosEnHorarioOperativo(hora_inicio_operativa, hora_fin_operativa))
          EvaluarEntrada();
    }
 
@@ -112,38 +106,8 @@ void EngineOnTick()
 }
 
 //=========================
-// FUNCIONES BASE
+// FUNCIONES LÓGICAS
 //=========================
-
-bool EsNuevaVela()
-{
-   datetime tiempo_actual = iTime(_Symbol, time_frame, 0);
-
-   if(tiempo_actual != ultima_vela_time)
-   {
-      ultima_vela_time = tiempo_actual;
-      return true;
-   }
-
-   return false;
-}
-
-bool EsNuevoDia()
-{
-   datetime tiempo_actual = TimeCurrent();
-   MqlDateTime estructura_tiempo_actual, estructura_tiempo_ultimo_dia;
-   
-   TimeToStruct(tiempo_actual, estructura_tiempo_actual);
-   TimeToStruct(ultimo_dia, estructura_tiempo_ultimo_dia);
-
-   if(estructura_tiempo_actual.day != estructura_tiempo_ultimo_dia.day)
-   {
-      ultimo_dia = tiempo_actual; 
-      return true;
-   }
-
-   return false;
-}
 
 void ResetearDia()
 {
@@ -154,22 +118,6 @@ void ResetearDia()
    rango_bottom = 0;
 
    Print("Nuevo día detectado. Variables reseteadas.");
-}
-
-void DibujarRango(datetime t1, double p1, datetime t2, double p2)
-{
-   string name = "rango_" + TimeToString(t1, TIME_DATE);
-   
-   ObjectDelete(0, name);
-   
-   if(ObjectCreate(0, name, OBJ_RECTANGLE, 0, t1, p1, t2, p2))
-   {
-      ObjectSetInteger(0, name, OBJPROP_COLOR, clrSkyBlue);
-      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_SOLID);
-      ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
-      ObjectSetInteger(0, name, OBJPROP_BACK, true); 
-      ObjectSetInteger(0, name, OBJPROP_FILL, true); 
-   }
 }
 
 void ConstruirRango()
@@ -224,20 +172,6 @@ void ConstruirRango()
    Print("Top: ", rango_top, " Bottom: ", rango_bottom);
 }
 
-bool EstamosEnHorarioOperativo()
-{
-   datetime ahora = TimeCurrent();
-   string fecha_hoy = TimeToString(ahora, TIME_DATE);
-
-   datetime inicio = StringToTime(fecha_hoy + " " + hora_inicio_operativa);
-   datetime fin    = StringToTime(fecha_hoy + " " + hora_fin_operativa);
-
-   if(ahora >= inicio && ahora <= fin)
-      return true;
-
-   return false;
-}
-
 void EvaluarEntrada()
 {
    double cierre = iClose(_Symbol, time_frame, 1); 
@@ -271,51 +205,27 @@ void EvaluarEntrada()
    if(tipo_orden == ORDER_TYPE_SELL && !permitir_sell)
       return;
 
-   double current_range_size = (rango_top - rango_bottom);
+   // Multiplicador para puntos (3/5 digitos)
    int digits_sym = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    double multiplier_sym = (digits_sym == 3 || digits_sym == 5) ? 10.0 : 1.0;
-   double range_in_points = current_range_size / (_Point * multiplier_sym);
-   range_in_points = NormalizeDouble(range_in_points, 1);
 
-   if(usar_filtro_opening_range_size)
-   {
-      if(range_in_points <= opening_range_size)
-      {
-         Print("Entrada cancelada por filtro de Opening Range Size. Tamaño (puntos): ", DoubleToString(range_in_points, 1), " es menor o igual al límite: ", DoubleToString(opening_range_size, 1));
-         return;
-      }
-   }
-
+   // Calculos para filtros
+   double current_range_size = (rango_top - rango_bottom);
+   double range_in_points = NormalizeDouble(current_range_size / (_Point * multiplier_sym), 1);
    long breakout_vol = logger.GetRealVolume(time_frame, 1);
    
-   if(usar_filtro_volumen)
-   {
-      if(breakout_vol <= volumen_limite)
-      {
-         Print("Entrada cancelada por filtro de volumen. Vol: ", breakout_vol, " no es mayor al límite: ", volumen_limite);
-         return;
-      }
-   }
-
-   double precio_actual_para_dist = (tipo_orden == ORDER_TYPE_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_ASK)
-                                   : SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   
+   double precio_actual_para_dist = (tipo_orden == ORDER_TYPE_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_ASK) : SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double dist_breakout = 0;
    if(tipo_orden == ORDER_TYPE_BUY)
       dist_breakout = (precio_actual_para_dist - rango_top) / (_Point * multiplier_sym);
    else
       dist_breakout = (rango_bottom - precio_actual_para_dist) / (_Point * multiplier_sym);
-
    dist_breakout = NormalizeDouble(dist_breakout, 1);
 
-   if(usar_filtro_distancia_ruptura)
-   {
-      if(dist_breakout > distancia_ruptura_maxima)
-      {
-         Print("Entrada cancelada por filtro de Distancia de Ruptura. Distancia (puntos): ", DoubleToString(dist_breakout, 1), " es mayor que el máximo: ", DoubleToString(distancia_ruptura_maxima, 1));
-         return;
-      }
-   }
+   // Validacion de Filtros
+   if(!ValidarRangoSize(usar_filtro_opening_range_size, range_in_points, opening_range_size)) return;
+   if(!ValidarVolumen(usar_filtro_volumen, breakout_vol, volumen_limite)) return;
+   if(!ValidarDistanciaRuptura(usar_filtro_distancia_ruptura, dist_breakout, distancia_ruptura_maxima)) return;
    
    double precio_ejec = precio_actual_para_dist;
    double sl_ejec, tp_ejec;
@@ -337,9 +247,7 @@ void EvaluarEntrada()
 
 void EjecutarOrden(ENUM_ORDER_TYPE tipo)
 {
-   double precio = (tipo == ORDER_TYPE_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_ASK)
-                   : SymbolInfoDouble(_Symbol, SYMBOL_BID);
-
+   double precio = (tipo == ORDER_TYPE_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_ASK) : SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double sl, tp;
 
    if(tipo == ORDER_TYPE_BUY)
@@ -359,10 +267,9 @@ void EjecutarOrden(ENUM_ORDER_TYPE tipo)
    if(sl_fijo)
       lote = Lots;
    else
-      lote = CalcularLotePorRiesgo();
+      lote = CalcularLotePorRiesgo(puntos_sl, porcentaje_riesgo);
 
    bool resultado;
-
    if(tipo == ORDER_TYPE_BUY)
       resultado = trade.Buy(lote, _Symbol, precio, sl, tp);
    else
@@ -418,43 +325,6 @@ bool HayPosicionAbierta()
       }
    }
    return false;
-}
-
-double CalcularLotePorRiesgo()
-{
-   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-
-   double riesgo_dinero = balance * porcentaje_riesgo / 100.0;
-
-   double tick_value = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
-   double tick_size  = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
-
-   double valor_punto_por_lote = tick_value / tick_size;
-
-   double riesgo_por_lote = puntos_sl * _Point * valor_punto_por_lote;
-
-   double volumen_min  = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
-   double volumen_step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
-
-   if(riesgo_por_lote <= 0)
-      return volumen_min;
-
-   double lote = riesgo_dinero / riesgo_por_lote;
-
-   if(lote < volumen_min)
-      lote = volumen_min;
-
-   double volumen_max = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
-   if(lote > volumen_max)
-      lote = volumen_max;
-
-   lote = MathFloor(lote / volumen_step) * volumen_step;
-
-   int digitos_lote = 0;
-   if(volumen_step == 0.1) digitos_lote = 1;
-   if(volumen_step == 0.01) digitos_lote = 2;
-
-   return NormalizeDouble(lote, digitos_lote);
 }
 
 bool PositionSelectByMagic(long magic)
