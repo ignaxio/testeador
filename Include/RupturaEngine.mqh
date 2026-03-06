@@ -291,9 +291,6 @@ void EjecutarOrden(ENUM_ORDER_TYPE tipo)
 
 void GestionarCierrePorHora()
 {
-   if(!HayPosicionAbierta())
-      return;
-
    datetime ahora = TimeCurrent();
    string fecha_hoy = TimeToString(ahora, TIME_DATE);
    datetime fin_sesion = StringToTime(fecha_hoy + " " + hora_fin_sesion);
@@ -302,12 +299,13 @@ void GestionarCierrePorHora()
    {
       for(int i=PositionsTotal()-1; i>=0; i--)
       {
-         if(PositionGetTicket(i))
+         ulong ticket = PositionGetTicket(i);
+         if(ticket > 0)
          {
             if(PositionGetInteger(POSITION_MAGIC) == MagicNumber)
             {
-               trade.PositionClose(PositionGetTicket(i));
-               Print("Posición cerrada por fin de sesión.");
+               trade.PositionClose(ticket);
+               Print("Posición cerrada por fin de sesión. Ticket: ", ticket);
             }
          }
       }

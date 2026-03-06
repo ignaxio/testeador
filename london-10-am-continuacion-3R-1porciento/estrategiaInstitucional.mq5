@@ -27,7 +27,7 @@ int OnInit()
    hora_inicio_operativa = "09:31";
    hora_fin_operativa    = "12:00";
    cerramos_trades       = true;
-   hora_fin_sesion       = "17:30";
+   hora_fin_sesion       = "21:00";
    direccion             = Continuacion;
    permitir_buy          = true;
    permitir_sell         = true;
