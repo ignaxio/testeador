@@ -8,7 +8,7 @@
 #property version   "1.0"
 #property strict
 
-#include "..\RupturaEngine.mqh"
+#include "..\Include\RupturaEngine.mqh"
 
 // NO HAY INPUTS AQUÍ - Parámetros fijos para uso profesional
 
