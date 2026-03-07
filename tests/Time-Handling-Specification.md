@@ -337,7 +337,43 @@ For future dates (2027 and beyond), the system will:
 
 ---
 
-# 16. Summary
+# 16. Implementation & Validation Plan (NEW)
+
+To manage complexity and ensure accuracy, the implementation will be divided into 4 incremental phases.
+
+### Phase 1: Core UTC Engine
+*   **Goal:** Establish the Broker-to-UTC link.
+*   **Tasks:**
+    *   Implement `UpdateOffset()` with Live Auto-Detection.
+    *   Implement the Historical DST Table (2016-2026).
+    *   Implement `GetUTCTime()`.
+*   **Validation:** Log `TimeCurrent()`, `TimeGMT()`, and calculated `UTC` to the terminal and verify they match known GMT offsets for the broker.
+
+### Phase 2: Market Timezones & API
+*   **Goal:** Convert UTC to specific Market Times.
+*   **Tasks:**
+    *   Implement `GetMarketTime(ZONE)`.
+    *   Implement `IsMarketSessionActive()`.
+    *   Implement string validation for `HH:MM`.
+*   **Validation:** Test with edge cases (e.g., checking if 08:00 London is correctly identified during both Summer and Winter DST).
+
+### Phase 3: Integration & Refactoring
+*   **Goal:** Replace legacy time logic.
+*   **Tasks:**
+    *   Refactor `Utilidades.mqh` to use `TimeService`.
+    *   Update `RupturaEngine.mqh` to use Market Time for range calculations.
+*   **Validation:** Run the EA on a Demo account and ensure it prints the correct Market Time for London/NY in the logs.
+
+### Phase 4: Backtest Validation (Critical)
+*   **Goal:** Ensure 100% consistency with historical data.
+*   **Validation Steps:**
+    1.  **Visual Log Check:** Run a backtest in "Visual Mode" for specific dates (e.g., March/November during DST changes). Verify that the `TimeService` correctly identifies the shift.
+    2.  **Trading Window Audit:** Run a 1-year backtest and export trades. Check if trades only occurred within the intended Market Hours (e.g., exactly at 10:00 London), regardless of whether the broker was GMT+2 or GMT+3 at that time.
+    3.  **Broker Consistency Test:** Run the same backtest on two different brokers (or symbols with different server times). The resulting trades and entry times (in Market Time) must be identical.
+
+---
+
+# 17. Summary
 
 This system ensures the trading robot:
 
