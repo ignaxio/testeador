@@ -275,7 +275,36 @@ The system should be designed to allow future extensions such as:
 
 ---
 
-# 14. Summary
+# 15. Broker Offset & DST Data Source (NEW)
+
+To ensure consistency between live trading and backtesting, the system uses a dual-source approach for calculating the Broker-to-UTC offset.
+
+### 15.1 Live Trading: Auto-Detection
+In a live environment, the system automatically detects the current broker offset by comparing the server time with the GMT time.
+
+*   **Method:** `Broker_Offset = TimeCurrent() - TimeGMT()`
+*   **Frequency:** Calculated once at the start of the session and verified daily at 00:00 (Broker Time).
+*   **Validation:** If the difference is not a multiple of 3600 seconds (1 hour) or 1800 seconds (30 mins), the system should log a warning.
+
+### 15.2 Backtesting: Historical Rule Table (Last 10 Years)
+Since `TimeGMT()` in the MT5 Strategy Tester may not always reflect historical DST changes correctly (depending on the broker's history data), the system will include a built-in table of DST transition rules for the last 10 years (2016–2026).
+
+**Historical DST Logic:**
+*   The system identifies the **Broker Type** (typically GMT+2/GMT+3 for most Forex brokers following the "New York Close" standard).
+*   It applies the historical transition dates for US/EU DST to determine the exact offset at any point in the past 10 years.
+*   **Default Rule:** Most MT5 brokers use "London/US Hybrid" logic:
+    *   **Winter:** GMT+2
+    *   **Summer:** GMT+3 (Aligned with US DST transitions to maintain 5 candles per week).
+
+### 15.3 Future Data Handling
+For future dates (2027 and beyond), the system will:
+1.  **Project Rules:** Assume current DST transition rules (e.g., 2nd Sunday of March for US) remain constant.
+2.  **Live Sync:** In live trading, the Auto-Detection (15.1) will always take precedence over the table, ensuring that even if DST laws change, the robot adapts instantly.
+3.  **Configurable Overrides:** Allow the user to manually set a fixed offset or a specific DST region (US, EU, Australia, None) via input parameters if the broker uses a non-standard timezone.
+
+---
+
+# 16. Summary
 
 This system ensures the trading robot:
 
