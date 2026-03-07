@@ -300,6 +300,12 @@ To prevent unnecessary overhead during `OnTick` (especially in backtesting):
 *   **Offset Caching:** The Broker-to-UTC offset must be calculated once and stored in a variable. It should only be updated if a day change is detected or at the start of the EA.
 *   **Lazy Conversion:** Market time conversions should only be performed when requested by a strategy, not automatically on every tick unless needed.
 
+### 14.4 Robustness and Validation
+To ensure the system is simple but robust:
+*   **Input Formatting:** All time strings (e.g., "10:00") must follow the `HH:MM` format. The system should internally validate this before any conversion. If a string is invalid, it should log an error and use a safe default (e.g., session start = 00:00).
+*   **Initialization Check:** A `bool IsInitialized()` method should be available to ensure that the offset calculation (Step 15) has been successfully completed before the strategy starts trading.
+*   **Logging:** In case of abnormal offsets (e.g., > 14 hours or not multiples of 30 mins), the system must log a clear warning to the Experts tab.
+
 ---
 
 # 15. Broker Offset & DST Data Source (NEW)
