@@ -275,6 +275,33 @@ The system should be designed to allow future extensions such as:
 
 ---
 
+# 14. Technical Implementation: TimeService Class (NEW)
+
+To centralize all time operations and ensure consistency across the entire EA, the system will implement a dedicated service class.
+
+### 14.1 Structure and API
+The `TimeService` class will be the only point of contact for time-related queries, replacing direct calls to `TimeCurrent()`.
+
+**Key Methods:**
+*   `bool IsMarketSessionActive(ENUM_MARKET_ZONE zone, string startTime, string endTime)`: Determines if current market time is within the specified range for a zone.
+*   `datetime GetMarketTime(ENUM_MARKET_ZONE zone)`: Returns the current time converted to the target market timezone.
+*   `datetime GetUTCTime()`: Returns the current UTC time derived from Broker Time + Offset.
+*   `void UpdateOffset()`: Recalculates the Broker-to-UTC offset (once daily or at startup).
+
+### 14.2 Weekend and Market Closure Handling
+While Forex is 24/5, the system must account for periods when the market is closed but the internal clock (or backtester) might still be active.
+
+*   **Friday Close:** The system should explicitly recognize the end of the trading week (usually Friday 17:00 NY time).
+*   **Sunday Open:** The system should recognize the start of the new week (usually Sunday 17:00 NY time).
+*   **Session Continuity:** If a session range crosses midnight (e.g., Asia session), the logic must handle the date transition correctly.
+
+### 14.3 Performance Optimization
+To prevent unnecessary overhead during `OnTick` (especially in backtesting):
+*   **Offset Caching:** The Broker-to-UTC offset must be calculated once and stored in a variable. It should only be updated if a day change is detected or at the start of the EA.
+*   **Lazy Conversion:** Market time conversions should only be performed when requested by a strategy, not automatically on every tick unless needed.
+
+---
+
 # 15. Broker Offset & DST Data Source (NEW)
 
 To ensure consistency between live trading and backtesting, the system uses a dual-source approach for calculating the Broker-to-UTC offset.
