@@ -1,4 +1,4 @@
-//+------------------------------------------------------------------+
+ï»¿//+------------------------------------------------------------------+
 //|                                           testeadorRupturas.mq5  |
 //|                                  Copyright 2024, Junie           |
 //|                                             https://www.mql5.com |
@@ -14,43 +14,43 @@
 // INPUTS
 //=========================
 
-input group "--- Configuración de Rango (UTC) ---"
-input ENUM_TIMEFRAMES time_frame_in = PERIOD_M5;        // Temporalidad del gráfico
-input string hora_inicio_rango_in      = "09:00";       // Hora inicio cálculo rango (UTC)
-input string hora_fin_rango_in         = "09:30";       // Hora fin cálculo rango (UTC)
-input int    rango_minimo_puntos_in    = 2;             // Tamaño mínimo del rango (puntos)
+input group "--- ConfiguraciÃ³n de Rango (UTC) ---"
+input ENUM_TIMEFRAMES time_frame_in = PERIOD_M5;        // Temporalidad del grÃ¡fico
+input string hora_inicio_rango_in      = "09:00";       // Hora inicio cÃ¡lculo rango (UTC)
+input string hora_fin_rango_in         = "09:30";       // Hora fin cÃ¡lculo rango (UTC)
+input int    rango_minimo_puntos_in    = 2;             // TamaÃ±o mÃ­nimo del rango (puntos)
 
-input group "--- Configuración Operativa (UTC) ---"
+input group "--- ConfiguraciÃ³n Operativa (UTC) ---"
 input string hora_inicio_operativa_in  = "09:31";       // Hora inicio para buscar entradas (UTC)
 input string hora_fin_operativa_in     = "12:00";       // Hora fin para buscar entradas (UTC)
-input bool   cerramos_trades_in        = true;          // ¿Cerrar trades al final de la sesión?
+input bool   cerramos_trades_in        = true;          // Â¿Cerrar trades al final de la sesiÃ³n?
 input string hora_fin_sesion_in        = "18:00";       // Hora de cierre forzoso (UTC)
-input ENUM_DIRECCION direccion_in      = Continuacion;  // Dirección: Continuación o Reversión
+input ENUM_DIRECCION direccion_in      = Continuacion;  // DirecciÃ³n: ContinuaciÃ³n o ReversiÃ³n
 input bool   permitir_buy_in           = true;          // Permitir operaciones de COMPRA
 input bool   permitir_sell_in          = true;          // Permitir operaciones de VENTA
 
-input group "--- Gestión de Riesgo ---"
+input group "--- GestiÃ³n de Riesgo ---"
 input int    puntos_sl_in              = 100;           // Puntos de Stop Loss
 input double ratio_in                  = 3.0;           // Ratio Take Profit (Ej: 3.0 = 1:3)
-input bool   sl_fijo_in                = true;          // ¿Usar lote fijo (true) o riesgo % (false)?
+input bool   sl_fijo_in                = true;          // Â¿Usar lote fijo (true) o riesgo % (false)?
 input double Lots_in                   = 0.1;           // Volumen de lote fijo
-input double porcentaje_riesgo_in      = 1.0;           // Porcentaje de riesgo por operación
+input double porcentaje_riesgo_in      = 1.0;           // Porcentaje de riesgo por operaciÃ³n
 
-input group "--- Gestión de SL Dinámico (Pruebas) ---"
+input group "--- GestiÃ³n de SL DinÃ¡mico (Pruebas) ---"
 input bool   usar_mover_sl_a_be_in  = false; // Activar movimiento de SL
 input double ratio_activacion_be_in = 2.0;   // Ratio para activar (Ej: 2.0 para 2R)
 input double porcentaje_sl_nuevo_in = 50.0;  // Nuevo SL % (50% = mitad del riesgo inicial)
 
 input group "--- Filtros de Entrada ---"
 input bool   usar_filtro_volumen_in    = false;         // Activar filtro de volumen real
-input int    volumen_limite_in         = 1000;          // Volumen mínimo requerido
-input bool   usar_filtro_opening_range_size_in = false; // Activar filtro tamaño de rango
-input double opening_range_size_in      = 50.0;         // Tamaño mínimo del rango (puntos)
+input int    volumen_limite_in         = 1000;          // Volumen mÃ­nimo requerido
+input bool   usar_filtro_opening_range_size_in = false; // Activar filtro tamaÃ±o de rango
+input double opening_range_size_in      = 50.0;         // TamaÃ±o mÃ­nimo del rango (puntos)
 input bool   usar_filtro_distancia_ruptura_in = false;  // Activar filtro distancia ruptura
-input double distancia_ruptura_maxima_in = 10.0;        // Distancia máxima permitida (puntos)
+input double distancia_ruptura_maxima_in = 10.0;        // Distancia mÃ¡xima permitida (puntos)
 
-input group "--- Configuración del Sistema ---"
-input int MagicNumber_in               = 12345;         // Identificador único del EA
+input group "--- ConfiguraciÃ³n del Sistema ---"
+input int MagicNumber_in               = 12345;         // Identificador Ãºnico del EA
 input string nombre_estrategia_in      = "ORB_Strategy_v1"; // Nombre para el log de trades
 
 //+------------------------------------------------------------------+
