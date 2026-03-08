@@ -19,6 +19,8 @@ int OnInit()
 {
    // --- Configuración de Rango ---
    time_frame          = PERIOD_M2;
+   modo_horario        = MODO_BROKER; // MODO_MERCADO (Auto DST) o MODO_BROKER (Estático)
+   zona_mercado        = ZONE_LONDON;
    hora_inicio_rango   = "09:00";
    hora_fin_rango      = "09:30";
    rango_minimo_puntos = 100;

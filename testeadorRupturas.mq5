@@ -14,17 +14,17 @@
 // INPUTS
 //=========================
 
-input group "--- Configuración de Rango ---"
+input group "--- Configuración de Rango (UTC) ---"
 input ENUM_TIMEFRAMES time_frame_in = PERIOD_M5;        // Temporalidad del gráfico
-input string hora_inicio_rango_in      = "09:00";       // Hora inicio cálculo rango
-input string hora_fin_rango_in         = "09:30";       // Hora fin cálculo rango
+input string hora_inicio_rango_in      = "09:00";       // Hora inicio cálculo rango (UTC)
+input string hora_fin_rango_in         = "09:30";       // Hora fin cálculo rango (UTC)
 input int    rango_minimo_puntos_in    = 2;             // Tamaño mínimo del rango (puntos)
 
-input group "--- Configuración Operativa ---"
-input string hora_inicio_operativa_in  = "09:31";       // Hora inicio para buscar entradas
-input string hora_fin_operativa_in     = "12:00";       // Hora fin para buscar entradas
+input group "--- Configuración Operativa (UTC) ---"
+input string hora_inicio_operativa_in  = "09:31";       // Hora inicio para buscar entradas (UTC)
+input string hora_fin_operativa_in     = "12:00";       // Hora fin para buscar entradas (UTC)
 input bool   cerramos_trades_in        = true;          // ¿Cerrar trades al final de la sesión?
-input string hora_fin_sesion_in        = "18:00";       // Hora de cierre forzoso
+input string hora_fin_sesion_in        = "18:00";       // Hora de cierre forzoso (UTC)
 input ENUM_DIRECCION direccion_in      = Continuacion;  // Dirección: Continuación o Reversión
 input bool   permitir_buy_in           = true;          // Permitir operaciones de COMPRA
 input bool   permitir_sell_in          = true;          // Permitir operaciones de VENTA

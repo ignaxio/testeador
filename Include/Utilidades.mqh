@@ -7,6 +7,8 @@
 #property link      "https://www.mql5.com"
 #property strict
 
+#include "TimeService.mqh"
+
 //=========================
 // FUNCIONES DE TIEMPO Y VELAS
 //=========================
@@ -41,18 +43,9 @@ bool EsNuevoDia(datetime &last_day)
    return false;
 }
 
-bool EstamosEnHorarioOperativo(string hora_inicio, string hora_fin)
+bool EstamosEnHorarioOperativo(ENUM_MARKET_ZONE zone, string hora_inicio, string hora_fin)
 {
-   datetime ahora = TimeCurrent();
-   string fecha_hoy = TimeToString(ahora, TIME_DATE);
-
-   datetime inicio = StringToTime(fecha_hoy + " " + hora_inicio);
-   datetime fin    = StringToTime(fecha_hoy + " " + hora_fin);
-
-   if(ahora >= inicio && ahora <= fin)
-      return true;
-
-   return false;
+   return CTimeService::IsMarketSessionActive(zone, hora_inicio, hora_fin);
 }
 
 //=========================

@@ -171,14 +171,15 @@ These variables should always represent **correct session times regardless of DS
 
 The time management system must:
 
-1. Provide current **UTC time**.
+1. Provide current **UTC time** (Base for all user inputs).
 2. Provide **London market time**.
 3. Provide **New York market time**.
 4. Provide **Asia market time**.
-5. Detect whether the current time is within a specific session.
+5. Detect whether the current time is within a specific session (Market or UTC).
 6. Provide session start and end timestamps for the current trading day.
 7. Work identically across different brokers.
 8. Automatically handle daylight saving time.
+9. **User Input Simplification**: All time inputs in EAs must be specified in **UTC format**.
 
 ---
 
@@ -283,6 +284,7 @@ To centralize all time operations and ensure consistency across the entire EA, t
 The `TimeService` class will be the only point of contact for time-related queries, replacing direct calls to `TimeCurrent()`.
 
 **Key Methods:**
+*   `bool IsUTCSessionActive(string startTime, string endTime)`: Determines if current UTC time is within the range (Used for user inputs).
 *   `bool IsMarketSessionActive(ENUM_MARKET_ZONE zone, string startTime, string endTime)`: Determines if current market time is within the specified range for a zone.
 *   `datetime GetMarketTime(ENUM_MARKET_ZONE zone)`: Returns the current time converted to the target market timezone.
 *   `datetime GetUTCTime()`: Returns the current UTC time derived from Broker Time + Offset.
@@ -319,21 +321,21 @@ In a live environment, the system automatically detects the current broker offse
 *   **Frequency:** Calculated once at the start of the session and verified daily at 00:00 (Broker Time).
 *   **Validation:** If the difference is not a multiple of 3600 seconds (1 hour) or 1800 seconds (30 mins), the system should log a warning.
 
-### 15.2 Backtesting: Historical Rule Table (Last 10 Years)
-Since `TimeGMT()` in the MT5 Strategy Tester may not always reflect historical DST changes correctly (depending on the broker's history data), the system will include a built-in table of DST transition rules for the last 10 years (2016–2026).
+### 15.2 Backtesting: Historical Rule Table (2016–2027)
+Since `TimeGMT()` in the MT5 Strategy Tester may not always reflect historical DST changes correctly (depending on the broker's history data), the system uses a built-in table of DST transition dates (`Include\DSTData.mqh`).
 
 **Historical DST Logic:**
-*   The system identifies the **Broker Type** (typically GMT+2/GMT+3 for most Forex brokers following the "New York Close" standard).
-*   It applies the historical transition dates for US/EU DST to determine the exact offset at any point in the past 10 years.
-*   **Default Rule:** Most MT5 brokers use "London/US Hybrid" logic:
+*   The system applies the exact transition dates defined in the `dst_table` array for US and EU DST.
+*   **Default Broker Rule:** Most MT5 brokers use "NY Close" logic:
     *   **Winter:** GMT+2
-    *   **Summer:** GMT+3 (Aligned with US DST transitions to maintain 5 candles per week).
+    *   **Summer:** GMT+3 (Aligned with US DST transitions).
+*   **Dependency:** The system depends exclusively on this table for backtesting and historical market time conversion.
 
 ### 15.3 Future Data Handling
-For future dates (2027 and beyond), the system will:
-1.  **Project Rules:** Assume current DST transition rules (e.g., 2nd Sunday of March for US) remain constant.
-2.  **Live Sync:** In live trading, the Auto-Detection (15.1) will always take precedence over the table, ensuring that even if DST laws change, the robot adapts instantly.
-3.  **Configurable Overrides:** Allow the user to manually set a fixed offset or a specific DST region (US, EU, Australia, None) via input parameters if the broker uses a non-standard timezone.
+For dates beyond the current table (2028+):
+1.  **Manual Update:** The `dst_table` in `DSTData.mqh` must be updated with new transition dates.
+2.  **Fallback:** If a year is missing from the table, the system defaults to Winter offsets (GMT+2 for Broker, UTC+0 for London, UTC-5 for NY) to maintain safety, while logging a warning.
+3.  **Live Sync:** In live trading, Auto-Detection (15.1) remains the primary source, ensuring correct operation even if the table is outdated.
 
 ---
 

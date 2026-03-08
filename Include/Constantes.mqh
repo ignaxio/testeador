@@ -11,6 +11,12 @@
 // ENUMS
 //=========================
 
+enum ENUM_MODO_HORARIO
+{
+   MODO_MERCADO, // Usa la zona horaria (ej. Londres) y ajusta DST automáticamente
+   MODO_BROKER   // Usa la hora que veas en el terminal, sin ajustes
+};
+
 enum ENUM_DIRECCION
 {
    Continuacion = 0,

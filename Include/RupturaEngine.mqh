@@ -18,7 +18,9 @@
 // VARIABLES DEL MOTOR (Configurables desde el MQ5)
 //=========================
 
-ENUM_TIMEFRAMES time_frame;
+ENUM_TIMEFRAMES   time_frame;
+ENUM_MODO_HORARIO modo_horario; // Cómo interpretar los inputs de horario
+ENUM_MARKET_ZONE  zona_mercado; // Zona horaria de referencia (solo MODO_MERCADO)
 string          hora_inicio_rango;
 string          hora_fin_rango;
 int             rango_minimo_puntos;
@@ -79,6 +81,9 @@ int EngineOnInit()
    logger.SetStrategyName(nombre_estrategia);
    logger.Init();
    
+   // Inicializar el servicio de tiempo
+   CTimeService::Init();
+   
    return(INIT_SUCCEEDED);
 }
 
@@ -99,7 +104,13 @@ void EngineOnTick()
 
    if(rango_calculado && !trade_ejecutado_hoy)
    {
-      if(EstamosEnHorarioOperativo(hora_inicio_operativa, hora_fin_operativa))
+      bool horario_activo = false;
+      if(modo_horario == MODO_MERCADO)
+         horario_activo = CTimeService::IsMarketSessionActive(zona_mercado, hora_inicio_operativa, hora_fin_operativa);
+      else
+         horario_activo = IsBrokerSessionActive(hora_inicio_operativa, hora_fin_operativa);
+
+      if(horario_activo)
          EvaluarEntrada();
    }
 
@@ -129,17 +140,88 @@ void ResetearDia()
 
 void ConstruirRango()
 {
-   datetime ahora = TimeCurrent();
+   if(modo_horario == MODO_MERCADO && !CTimeService::IsInitialized()) return;
 
-   datetime hoy_inicio = StringToTime(TimeToString(ahora, TIME_DATE) + " 00:00");
-   datetime dt_inicio_rango = StringToTime(TimeToString(ahora, TIME_DATE) + " " + hora_inicio_rango);
-   datetime dt_fin_rango    = StringToTime(TimeToString(ahora, TIME_DATE) + " " + hora_fin_rango);
+   // 1. Comprobar si ya ha pasado el horario del rango
+   bool en_rango = false;
+   if(modo_horario == MODO_MERCADO)
+      en_rango = CTimeService::IsMarketSessionActive(zona_mercado, hora_inicio_rango, hora_fin_rango);
+   else
+      en_rango = IsBrokerSessionActive(hora_inicio_rango, hora_fin_rango);
 
-   if(ahora < dt_fin_rango)
+   if(en_rango)
+      return; // Aún estamos dentro del rango, no calcular
+
+   // 2. Asegurarnos de que el rango no se calcule antes de que empiece la sesión operativa
+   datetime time_now;
+   datetime t_fin_rango;
+
+   if(modo_horario == MODO_MERCADO)
+   {
+      time_now = CTimeService::GetMarketTime(zona_mercado);
+      MqlDateTime dt_m;
+      TimeToStruct(time_now, dt_m);
+      dt_m.hour = (int)StringToInteger(StringSubstr(hora_fin_rango, 0, 2));
+      dt_m.min = (int)StringToInteger(StringSubstr(hora_fin_rango, 3, 2));
+      dt_m.sec = 0;
+      t_fin_rango = StructToTime(dt_m);
+   }
+   else
+   {
+      time_now = TimeCurrent();
+      MqlDateTime dt_b;
+      TimeToStruct(time_now, dt_b);
+      dt_b.hour = (int)StringToInteger(StringSubstr(hora_fin_rango, 0, 2));
+      dt_b.min = (int)StringToInteger(StringSubstr(hora_fin_rango, 3, 2));
+      dt_b.sec = 0;
+      t_fin_rango = StructToTime(dt_b);
+   }
+
+   if(time_now < t_fin_rango)
       return;
 
-   int index_inicio = iBarShift(_Symbol, time_frame, dt_inicio_rango, false);
-   int index_fin    = iBarShift(_Symbol, time_frame, dt_fin_rango, false);
+   // 3. Obtener los timestamps de inicio y fin para el broker
+   datetime dt_inicio_rango_broker, dt_fin_rango_broker;
+
+   if(modo_horario == MODO_MERCADO)
+   {
+      datetime temp_broker = TimeCurrent();
+      datetime market_ref = CTimeService::GetMarketTime(zona_mercado, temp_broker);
+      int offset_market_to_broker = (int)(temp_broker - market_ref);
+
+      MqlDateTime dt_start, dt_end;
+      TimeToStruct(market_ref, dt_start);
+      dt_start.hour = (int)StringToInteger(StringSubstr(hora_inicio_rango, 0, 2));
+      dt_start.min = (int)StringToInteger(StringSubstr(hora_inicio_rango, 3, 2));
+      dt_start.sec = 0;
+
+      TimeToStruct(market_ref, dt_end);
+      dt_end.hour = (int)StringToInteger(StringSubstr(hora_fin_rango, 0, 2));
+      dt_end.min = (int)StringToInteger(StringSubstr(hora_fin_rango, 3, 2));
+      dt_end.sec = 0;
+
+      dt_inicio_rango_broker = StructToTime(dt_start) + offset_market_to_broker;
+      dt_fin_rango_broker = StructToTime(dt_end) + offset_market_to_broker;
+   }
+   else
+   {
+      MqlDateTime dt_start, dt_end;
+      TimeToStruct(time_now, dt_start);
+      dt_start.hour = (int)StringToInteger(StringSubstr(hora_inicio_rango, 0, 2));
+      dt_start.min = (int)StringToInteger(StringSubstr(hora_inicio_rango, 3, 2));
+      dt_start.sec = 0;
+
+      TimeToStruct(time_now, dt_end);
+      dt_end.hour = (int)StringToInteger(StringSubstr(hora_fin_rango, 0, 2));
+      dt_end.min = (int)StringToInteger(StringSubstr(hora_fin_rango, 3, 2));
+      dt_end.sec = 0;
+
+      dt_inicio_rango_broker = StructToTime(dt_start);
+      dt_fin_rango_broker = StructToTime(dt_end);
+   }
+
+   int index_inicio = iBarShift(_Symbol, time_frame, dt_inicio_rango_broker, false);
+   int index_fin    = iBarShift(_Symbol, time_frame, dt_fin_rango_broker, false);
 
    if(index_inicio < 0 || index_fin < 0)
    {
@@ -172,8 +254,8 @@ void ConstruirRango()
    }
 
    rango_calculado = true;
-
-   DibujarRango(dt_inicio_rango, rango_top, dt_fin_rango, rango_bottom);
+   
+   DibujarRango(dt_inicio_rango_broker, rango_top, dt_fin_rango_broker, rango_bottom);
 
    Print("Rango calculado y dibujado correctamente.");
    Print("Top: ", rango_top, " Bottom: ", rango_bottom);
@@ -299,11 +381,13 @@ void EjecutarOrden(ENUM_ORDER_TYPE tipo)
 
 void GestionarCierrePorHora()
 {
-   datetime ahora = TimeCurrent();
-   string fecha_hoy = TimeToString(ahora, TIME_DATE);
-   datetime fin_sesion = StringToTime(fecha_hoy + " " + hora_fin_sesion);
+   bool fin_sesion = false;
+   if(modo_horario == MODO_MERCADO)
+      fin_sesion = CTimeService::IsMarketSessionActive(zona_mercado, hora_fin_sesion, "23:59");
+   else
+      fin_sesion = IsBrokerSessionActive(hora_fin_sesion, "23:59");
 
-   if(ahora >= fin_sesion)
+   if(fin_sesion)
    {
       for(int i=PositionsTotal()-1; i>=0; i--)
       {
@@ -313,11 +397,42 @@ void GestionarCierrePorHora()
             if(PositionGetInteger(POSITION_MAGIC) == MagicNumber)
             {
                trade.PositionClose(ticket);
-               Print("Posición cerrada por fin de sesión. Ticket: ", ticket);
+               string ref_str = (modo_horario == MODO_MERCADO) ? "Mercado: " : "Broker: ";
+               Print("Posición cerrada por fin de sesión (", ref_str, hora_fin_sesion, "). Ticket: ", ticket);
             }
          }
       }
    }
+}
+
+//+------------------------------------------------------------------+
+//| Comprueba si el broker está dentro de un rango horario (estático) |
+//+------------------------------------------------------------------+
+bool IsBrokerSessionActive(string start_time, string end_time, datetime broker_time = 0)
+{
+   if(!CTimeService::ValidateHHMM(start_time) || !CTimeService::ValidateHHMM(end_time))
+   {
+      Print("RupturaEngine ERROR: Formato de hora broker inválido: '", start_time, "' o '", end_time, "'.");
+      return false;
+   }
+
+   datetime now = (broker_time == 0) ? TimeCurrent() : broker_time;
+   MqlDateTime dt;
+   TimeToStruct(now, dt);
+   int current_minutes = dt.hour * 60 + dt.min;
+
+   int start_h = (int)StringToInteger(StringSubstr(start_time, 0, 2));
+   int start_m = (int)StringToInteger(StringSubstr(start_time, 3, 2));
+   int end_h   = (int)StringToInteger(StringSubstr(end_time, 0, 2));
+   int end_m   = (int)StringToInteger(StringSubstr(end_time, 3, 2));
+
+   int start_minutes = start_h * 60 + start_m;
+   int end_minutes   = end_h * 60 + end_m;
+
+   if(end_minutes < start_minutes)
+      return (current_minutes >= start_minutes || current_minutes < end_minutes);
+
+   return (current_minutes >= start_minutes && current_minutes < end_minutes);
 }
 
 bool HayPosicionAbierta()
