@@ -1,379 +1,84 @@
-# Especificación: Generación de CSV para análisis de estrategia ORB
+# Documentación Técnica: Sistema de Trading ORB (Opening Range Breakout)
 
-## Objetivo
-
-El Expert Advisor debe generar automáticamente un archivo **CSV de investigación** que registre información detallada de cada operación cerrada.
-Este archivo se utilizará posteriormente para realizar **análisis estadístico del comportamiento de la estrategia de ruptura de rango (ORB)** y poder detectar patrones que expliquen pérdidas o mejoras potenciales.
-
-El objetivo del archivo es permitir estudiar:
-
-* Winrate según tamaño del rango
-* Winrate según volatilidad del mercado
-* Rendimiento por día de la semana
-* Rendimiento por mes
-* Impacto de la distancia de ruptura
-* Contexto de volatilidad previo
-
-El archivo se utilizará para **investigación cuantitativa y optimización del robot**.
+Este documento describe la arquitectura técnica, la estructura de datos y el funcionamiento del sistema de trading de ruptura de rango. El objetivo principal del sistema es la ejecución automatizada y la recolección de datos masiva para investigación cuantitativa.
 
 ---
 
-# Organización del código
+## 1. Arquitectura del Proyecto
 
-Toda la lógica de generación y escritura del CSV debe estar **en un fichero independiente del EA principal**, con el objetivo de mantener el código organizado y modular.
+El proyecto está organizado de forma modular para separar la lógica de ejecución del análisis de datos y las pruebas:
 
-Ejemplo de estructura:
-
-```
-EA_Principal.mq5
-csv_trade_logger.mqh
-```
-
-El archivo `csv_trade_logger.mqh` contendrá toda la lógica relacionada con:
-
-* creación del CSV
-* escritura de encabezados
-* escritura de filas de datos
-* gestión de archivos
-
-El EA principal únicamente llamará a las funciones necesarias cuando una operación se cierre.
+- **`Include/`**: Contiene el motor lógico y servicios comunes.
+  - `RupturaEngine.mqh`: Motor principal de la estrategia.
+  - `TimeService.mqh`: Gestión dinámica de horarios y DST (Summer/Winter time).
+  - `csv_trade_logger.mqh`: Servicio de registro de operaciones en formato CSV.
+  - `GestionRiesgo.mqh`: Cálculos de lotaje y gestión dinámica de Stop Loss.
+  - `Filtros.mqh`: Validaciones de entrada (tamaño de rango, volatilidad, etc.).
+- **Raíz del Proyecto**:
+  - `EstrategiaRupturaGenerica.mq5`: EA base parametrizable para nuevas investigaciones.
+  - `london-10-am-.../`: Carpeta con implementaciones específicas (ej. Estrategia Institucional).
+- **`tests/`**: Scripts de validación.
+  - `TestTimeService.mq5`: Validador de cambios de hora históricos.
 
 ---
 
-# Ubicación del archivo CSV
+## 2. Gestión de Tiempos y Horarios
 
-El archivo CSV debe guardarse en la siguiente ruta:
+El sistema utiliza un motor de tiempo avanzado (`CTimeService`) que permite dos modos de operación:
 
-```
-MQL5\Experts\custom\probadorEstrategiasRupturaRango\tests
-```
+1.  **MODO_MERCADO**: El robot se sincroniza con una zona horaria específica (ej. `ZONE_LONDON`). Detecta automáticamente los cambios de horario de verano/invierno (DST) usando una tabla interna, evitando ajustes manuales del usuario.
+2.  **MODO_BROKER**: El robot utiliza la hora del terminal de MetaTrader tal cual se muestra, sin ajustes automáticos.
 
----
-
-# Nombre del archivo
-
-El nombre del archivo debe depender de un **parámetro configurable del EA**.
-
-Parámetro:
-
-```
-nombre_estrategia
-```
-
-El archivo generado será:
-
-```
-<nombre_estrategia>.csv
-```
-
-Ejemplo:
-
-```
-ORB_NASDAQ_v1.csv
-```
-
-Esto permite que múltiples versiones de la estrategia generen **datasets independientes**.
+**Importante:** En los registros de auditoría y archivos CSV, las horas (`TimeOpen`, `TimeClose`) se guardan siempre en **Hora del Broker** para facilitar la correlación directa con el gráfico del terminal.
 
 ---
 
-# Creación del archivo
+## 3. Registro de Datos (Auditoría CSV)
 
-Si el archivo **no existe**, el sistema debe:
+El sistema genera automáticamente un archivo de investigación para análisis estadístico.
 
-1. Crear el archivo
-2. Escribir la primera línea con los encabezados
+### Ubicación del archivo
+Los archivos CSV se guardan en la carpeta **Common de MetaQuotes**. Esto permite que el archivo sea accesible desde cualquier terminal instalado en el PC y facilita su apertura en herramientas externas como Excel o Python sin conflictos de permisos.
 
-Si el archivo **ya existe**, el sistema debe:
+**Ruta típica:**
+`C:\Users\<Usuario>\AppData\Roaming\MetaQuotes\Terminal\Common\Files\`
 
-* abrir el archivo
-* añadir nuevas filas al final
-* **sin borrar datos anteriores**
+### Estructura del CSV (Campos)
+El archivo contiene los siguientes campos para cada operación cerrada:
 
----
-
-# Momento de registro del trade
-
-El robot debe registrar los datos **cuando una operación se cierre** (TP o SL).
-
-Esto asegura que cada fila contenga:
-
-* resultado final
-* puntos ganados o perdidos
-* resultado en múltiplos de riesgo (R)
-
-Cada fila representa **una operación cerrada**.
-
----
-
-# Estructura del CSV
-
-La primera línea del archivo debe contener los encabezados:
-
-```
-Date,Time,Direction,EntryPrice,StopLoss,TakeProfit,ResultPoints,ResultR,OpeningRangeSize,ATR,YesterdayRange,DistanceBreakout,DayOfWeek,Month
-```
+| Campo | Descripción |
+| :--- | :--- |
+| **Date** | Fecha de apertura (YYYY.MM.DD) |
+| **TimeOpen** | Hora exacta de entrada (HH:MM:SS) |
+| **TimeClose** | Hora exacta de salida (HH:MM:SS) |
+| **Direction** | LONG o SHORT |
+| **EntryPrice** | Precio de ejecución de la entrada |
+| **ResultPoints** | Puntos netos ganados o perdidos |
+| **ResultR** | Resultado en múltiplos de riesgo (Profit / Riesgo Inicial) |
+| **MAE_Points** | Máxima Excursión Adversa (cuánto estuvo en negativo) |
+| **MFE_Points** | Máxima Excursión Favorable (cuánto estuvo en positivo) |
+| **SMA200_Trend** | Tendencia en H1 según Media Móvil Simple de 200 periodos |
+| **Breakout_Volume**| Volumen de la vela de ruptura |
+| **Duration_Minutes**| Tiempo que la operación estuvo abierta |
+| **OpeningRangeSize**| Tamaño total del rango de apertura en puntos |
+| **ATR** | Volatilidad del mercado (ATR 14) al momento de entrar |
+| **DistanceBreakout**| Distancia entre el nivel de ruptura y la entrada real |
+| **DayOfWeek / Month**| Metadatos temporales para análisis estacional |
 
 ---
 
-# Descripción de los campos
+## 4. Guía de Análisis y Optimización
 
-## Date
+Basado en los datos recolectados, se recomiendan los siguientes puntos de análisis para mejorar la estrategia:
 
-Fecha en la que se abrió la operación.
-
-Formato:
-
-```
-YYYY.MM.DD
-```
-
-Ejemplo:
-
-```
-2024.03.05
-```
+1.  **Filtro de Agotamiento:** Analizar el campo `OpeningRangeSize`. Si el rango es excesivamente grande (ej. > 8000 puntos), el precio suele estar agotado y el ratio 1:3 es estadísticamente menos probable.
+2.  **Sweet Spot de Volatilidad:** Usar el `ATR` y `OpeningRangeSize` para encontrar el rango de volatilidad donde la estrategia tiene mayor "Follow-through". (Actualmente el "sweet spot" detectado está entre 2000 y 3300 puntos).
+3.  **Análisis de Calidad (MAE/MFE):** Si el `MAE_Points` suele ser bajo en las operaciones ganadoras, indica que las entradas son precisas. Si el `MFE_Points` alcanza 2.5R pero termina en 1R, sugiere ajustar la gestión dinámica de beneficios.
+4.  **Filtro de Tendencia Mayor:** Utilizar el campo `SMA200_Trend` para determinar si operar a favor de la tendencia de H1 aumenta significativamente el Winrate.
 
 ---
 
-## Time
+## 5. Mantenimiento del Sistema
 
-Hora de entrada de la operación.
-
-Formato:
-
-```
-HH:MM
-```
-
-Ejemplo:
-
-```
-09:35
-```
-
----
-
-## Direction
-
-Dirección de la operación.
-
-Valores posibles:
-
-```
-LONG
-SHORT
-```
-
----
-
-## EntryPrice
-
-Precio exacto de entrada de la operación.
-
-Ejemplo:
-
-```
-18350.25
-```
-
----
-
-## StopLoss
-
-Precio del Stop Loss.
-
----
-
-## TakeProfit
-
-Precio del Take Profit.
-
----
-
-## ResultPoints
-
-Resultado final de la operación expresado en puntos.
-
-Ejemplos:
-
-```
-+30
--30
-```
-
-Cálculo:
-
-Para largos:
-
-```
-ExitPrice - EntryPrice
-```
-
-Para cortos:
-
-```
-EntryPrice - ExitPrice
-```
-
----
-
-## ResultR
-
-Resultado expresado en múltiplos de riesgo (R).
-
-Ejemplo:
-
-```
-+1
--1
-```
-
-Cálculo:
-
-```
-ResultPoints / StopDistance
-```
-
-donde
-
-```
-StopDistance = abs(EntryPrice - StopLoss)
-```
-
----
-
-## OpeningRangeSize
-
-Tamaño del rango de apertura utilizado por la estrategia.
-
-Cálculo:
-
-```
-OpeningRangeHigh - OpeningRangeLow
-```
-
-Este valor es clave para analizar si determinados tamaños de rango generan más pérdidas.
-
----
-
-## ATR
-
-Valor del ATR del mercado en el momento de la entrada.
-
-Recomendado:
-
-```
-ATR(14)
-```
-
-Timeframe recomendado:
-
-```
-M5 o M15
-```
-
-Esto permite analizar el impacto de la volatilidad.
-
----
-
-## YesterdayRange
-
-Rango total del día anterior.
-
-Cálculo:
-
-```
-HighYesterday - LowYesterday
-```
-
-Sirve para identificar si el mercado viene de un día con alta o baja volatilidad.
-
----
-
-## DistanceBreakout
-
-Distancia entre el precio de entrada y el nivel de ruptura del rango.
-
-Cálculo:
-
-Para largos:
-
-```
-EntryPrice - OpeningRangeHigh
-```
-
-Para cortos:
-
-```
-OpeningRangeLow - EntryPrice
-```
-
-Esto permite analizar si entrar demasiado lejos del rango provoca más pérdidas.
-
----
-
-## DayOfWeek
-
-Día de la semana.
-
-Valores posibles:
-
-```
-Monday
-Tuesday
-Wednesday
-Thursday
-Friday
-```
-
-Esto permite detectar si la estrategia funciona peor en determinados días.
-
----
-
-## Month
-
-Mes del año.
-
-Valores:
-
-```
-January
-February
-March
-April
-May
-June
-July
-August
-September
-October
-November
-December
-```
-
-Esto permitirá identificar periodos largos negativos.
-
----
-
-# Ejemplo de filas del CSV
-
-```
-Date,Time,Direction,EntryPrice,StopLoss,TakeProfit,ResultPoints,ResultR,OpeningRangeSize,ATR,YesterdayRange,DistanceBreakout,DayOfWeek,Month
-2024.03.05,09:35,LONG,18350,18320,18380,30,1,12,35,120,1.5,Tuesday,March
-2024.03.06,09:35,SHORT,18410,18440,18380,-30,-1,6,28,90,0.8,Wednesday,March
-2024.03.07,09:35,LONG,18290,18260,18320,30,1,18,40,150,2.1,Thursday,March
-```
-
----
-
-# Uso del dataset
-
-Una vez generados suficientes datos (idealmente **200-500 trades**), el archivo permitirá analizar:
-
-* Winrate según tamaño del rango
-* Impacto de la volatilidad (ATR)
-* Rendimiento por día de la semana
-* Rendimiento por mes
-* Condiciones de mercado que generan rachas negativas
-
-Este dataset se utilizará para **diseñar filtros estadísticos que mejoren el sistema sin modificar su lógica principal**.
+- **Actualización de DST:** La tabla de fechas de cambio de hora en `Include/DSTData.mqh` debe revisarse anualmente (actualmente cubre hasta 2027).
+- **Limpieza de Logs:** Si el archivo CSV crece demasiado, puede moverse o renombrarse; el robot creará uno nuevo automáticamente con los encabezados correspondientes.
