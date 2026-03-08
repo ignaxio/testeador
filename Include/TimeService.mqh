@@ -39,9 +39,6 @@ public:
    static datetime   GetMarketTime(ENUM_MARKET_ZONE zone, datetime broker_time = 0);
    static bool       IsMarketSessionActive(ENUM_MARKET_ZONE zone, string start_time, string end_time, datetime broker_time = 0);
    
-   // Nueva funcionalidad: Sesión activa basada en UTC (Inputs del usuario)
-   static bool       IsUTCSessionActive(string start_time, string end_time, datetime broker_time = 0);
-   
    static bool       ValidateHHMM(string time_str);
 };
 
@@ -196,38 +193,6 @@ datetime CTimeService::GetMarketTime(ENUM_MARKET_ZONE zone, datetime broker_time
       default:
          return utc;
    }
-}
-
-//+------------------------------------------------------------------+
-//| Comprueba si la hora UTC actual está dentro de un rango horario   |
-//| (Usado para inputs del usuario que siempre deben ser UTC)        |
-//+------------------------------------------------------------------+
-bool CTimeService::IsUTCSessionActive(string start_time, string end_time, datetime broker_time = 0)
-{
-   if(!ValidateHHMM(start_time) || !ValidateHHMM(end_time))
-   {
-      Print("TimeService ERROR: Formato de hora UTC inválido (esperado HH:MM): '", start_time, "' o '", end_time, "'.");
-      return false;
-   }
-
-   datetime utc_now = GetUTCTime(broker_time);
-   
-   MqlDateTime dt_now;
-   TimeToStruct(utc_now, dt_now);
-   int current_minutes = dt_now.hour * 60 + dt_now.min;
-
-   int start_h = (int)StringToInteger(StringSubstr(start_time, 0, 2));
-   int start_m = (int)StringToInteger(StringSubstr(start_time, 3, 2));
-   int end_h   = (int)StringToInteger(StringSubstr(end_time, 0, 2));
-   int end_m   = (int)StringToInteger(StringSubstr(end_time, 3, 2));
-
-   int start_minutes = start_h * 60 + start_m;
-   int end_minutes   = end_h * 60 + end_m;
-
-   if(end_minutes < start_minutes)
-      return (current_minutes >= start_minutes || current_minutes < end_minutes);
-
-   return (current_minutes >= start_minutes && current_minutes < end_minutes);
 }
 
 //+------------------------------------------------------------------+

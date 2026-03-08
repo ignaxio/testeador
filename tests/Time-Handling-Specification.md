@@ -284,8 +284,7 @@ To centralize all time operations and ensure consistency across the entire EA, t
 The `TimeService` class will be the only point of contact for time-related queries, replacing direct calls to `TimeCurrent()`.
 
 **Key Methods:**
-*   `bool IsUTCSessionActive(string startTime, string endTime)`: Determines if current UTC time is within the range (Used for user inputs).
-*   `bool IsMarketSessionActive(ENUM_MARKET_ZONE zone, string startTime, string endTime)`: Determines if current market time is within the specified range for a zone.
+*   `bool IsMarketSessionActive(ENUM_MARKET_ZONE zone, string startTime, string endTime)`: Determines if current market time is within the specified range for a zone. (Replaces `IsUTCSessionActive`).
 *   `datetime GetMarketTime(ENUM_MARKET_ZONE zone)`: Returns the current time converted to the target market timezone.
 *   `datetime GetUTCTime()`: Returns the current UTC time derived from Broker Time + Offset.
 *   `void UpdateOffset()`: Recalculates the Broker-to-UTC offset (once daily or at startup).

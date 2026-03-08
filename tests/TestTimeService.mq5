@@ -8,7 +8,7 @@
 #property version   "1.00"
 #property strict
 
-#include "Include\TimeService.mqh"
+#include "..\Include\TimeService.mqh"
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -31,21 +31,20 @@ int OnInit()
    Print("NY Time:     ", ny);
    Print("Tokyo Time:  ", tok);
    
-   // Test de sesión activa (ejemplo: Rango de Londres 08:00 - 10:00 UTC)
-   bool activa_utc = CTimeService::IsUTCSessionActive("08:00", "10:00", ahora);
-   Print("¿Rango UTC 08:00-10:00 activo? ", activa_utc ? "SÍ" : "NO");
+   // Test de sesión activa (ejemplo: Rango de Londres 09:00 - 10:00 Market)
+   bool activa_market = CTimeService::IsMarketSessionActive(ZONE_LONDON, "09:00", "10:00", ahora);
+   Print("¿Rango London 09:00-10:00 activo? ", activa_market ? "SÍ" : "NO");
    
    // Test Fase 2: Formatos inválidos
-   Print("Test Validación HH:MM UTC (esperado error):");
-   bool error_format = CTimeService::IsUTCSessionActive("8:0", "10:00", ahora);
+   Print("Test Validación HH:MM Market (esperado error):");
+   bool error_format = CTimeService::IsMarketSessionActive(ZONE_LONDON, "8:0", "10:00", ahora);
    
    // Test Fase 2: Cruce de medianoche
-   Print("Test Cruce Medianoche UTC (22:00-04:00) a las 23:00 (esperado SÍ):");
-   // Simulamos las 23:00 UTC (ajustando broker_time)
-   // Si el broker es GMT+2, la 01:00 AM Broker -> 23:00 UTC
-   datetime test_midnight = StringToTime(TimeToString(ahora, TIME_DATE) + " 01:00");
-   bool activa_midnight = CTimeService::IsUTCSessionActive("22:00", "04:00", test_midnight);
-   Print("¿Cruce 22:00-04:00 activo a la 01:00 Broker (23:00 UTC)? ", activa_midnight ? "SÍ" : "NO");
+   Print("Test Cruce Medianoche Market (22:00-04:00) a las 23:00 (esperado SÍ):");
+   // Simulamos las 23:00 Market
+   datetime test_midnight = StringToTime(TimeToString(ahora, TIME_DATE) + " 23:00");
+   bool activa_midnight = CTimeService::IsMarketSessionActive(ZONE_LONDON, "22:00", "04:00", test_midnight);
+   Print("¿Cruce 22:00-04:00 activo a las 23:00 Market? ", activa_midnight ? "SÍ" : "NO");
 
    return(INIT_SUCCEEDED);
 }
