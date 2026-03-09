@@ -53,7 +53,7 @@ int OnInit()
    
    // --- Sistema ---
    MagicNumber       = 99901;
-   nombre_estrategia = "rango10continuacion_pro";
+   nombre_estrategia = "rango10-continuacion-pro-v1";
 
    return EngineOnInit();
 }
