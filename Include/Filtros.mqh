@@ -56,3 +56,49 @@ bool ValidarExclusionRango(bool activar, double range_size)
    }
    return true;
 }
+
+bool ValidarTendenciaSMA200(bool activar, ENUM_ORDER_TYPE tipo_orden)
+{
+   if(!activar) return true;
+
+   int handle = iMA(_Symbol, PERIOD_H1, 200, 0, MODE_SMA, PRICE_CLOSE);
+   if(handle == INVALID_HANDLE) return true;
+
+   double buffer[];
+   ArraySetAsSeries(buffer, true);
+   if(CopyBuffer(handle, 0, 0, 1, buffer) <= 0)
+   {
+      IndicatorRelease(handle);
+      return true;
+   }
+   
+   double sma = buffer[0];
+   
+   if(sma <= 0) 
+   {
+      IndicatorRelease(handle);
+      return true; // Error en el indicador, no filtrar
+   }
+
+   double precio = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   IndicatorRelease(handle);
+
+   if(tipo_orden == ORDER_TYPE_BUY)
+   {
+      if(precio < sma)
+      {
+         Print("Entrada BUY cancelada por filtro SMA200 H1. Precio: ", precio, " < SMA: ", sma);
+         return false;
+      }
+   }
+   else if(tipo_orden == ORDER_TYPE_SELL)
+   {
+      if(precio > sma)
+      {
+         Print("Entrada SELL cancelada por filtro SMA200 H1. Precio: ", precio, " > SMA: ", sma);
+         return false;
+      }
+   }
+
+   return true;
+}

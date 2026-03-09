@@ -49,6 +49,12 @@ double          opening_range_size;
 bool            usar_filtro_distancia_ruptura;
 double          distancia_ruptura_maxima;
 bool            usar_filtro_exclusion_rango;
+bool            usar_filtro_sma200;
+bool            permitir_lunes;
+bool            permitir_martes;
+bool            permitir_miercoles;
+bool            permitir_jueves;
+bool            permitir_viernes;
 
 int             MagicNumber;
 string          nombre_estrategia;
@@ -83,6 +89,12 @@ int EngineOnInit()
    
    // Inicializar el servicio de tiempo
    CTimeService::Init();
+   
+   // Inicializar permisos de días si no se han configurado (compatibilidad)
+   if(!permitir_lunes && !permitir_martes && !permitir_miercoles && !permitir_jueves && !permitir_viernes)
+   {
+      permitir_lunes = permitir_martes = permitir_miercoles = permitir_jueves = permitir_viernes = true;
+   }
    
    return(INIT_SUCCEEDED);
 }
@@ -316,6 +328,16 @@ void EvaluarEntrada()
    if(!ValidarVolumen(usar_filtro_volumen, breakout_vol, volumen_limite)) return;
    if(!ValidarDistanciaRuptura(usar_filtro_distancia_ruptura, dist_breakout, distancia_ruptura_maxima)) return;
    if(!ValidarExclusionRango(usar_filtro_exclusion_rango, range_in_points)) return;
+   if(!ValidarTendenciaSMA200(usar_filtro_sma200, tipo_orden)) return;
+
+   // Validación de días de la semana
+   MqlDateTime dt_hoy;
+   TimeCurrent(dt_hoy);
+   if(dt_hoy.day_of_week == 1 && !permitir_lunes) { Print("Operación cancelada: Lunes no permitido."); return; }
+   if(dt_hoy.day_of_week == 2 && !permitir_martes) { Print("Operación cancelada: Martes no permitido."); return; }
+   if(dt_hoy.day_of_week == 3 && !permitir_miercoles) { Print("Operación cancelada: Miércoles no permitido."); return; }
+   if(dt_hoy.day_of_week == 4 && !permitir_jueves) { Print("Operación cancelada: Jueves no permitido."); return; }
+   if(dt_hoy.day_of_week == 5 && !permitir_viernes) { Print("Operación cancelada: Viernes no permitido."); return; }
    
    double precio_ejec = precio_actual_para_dist;
    double sl_ejec, tp_ejec;
