@@ -248,9 +248,11 @@ void ConstruirRango()
    if(post_rango)
    {
       double tamaño_rango = (rango_top - rango_bottom) / _Point;
+      
+      // Solo fijamos el rango si cumple el tamaño mínimo al terminar el tiempo
       if(tamaño_rango < rango_minimo_puntos)
       {
-         Print("Rango inválido por tamaño mínimo.");
+         Print("Rango finalizado pero INVÁLIDO por tamaño insuficiente (", tamaño_rango, " pts < ", rango_minimo_puntos, " pts).");
          rango_calculado = true;
          rango_fijado = false; 
          return;
@@ -258,7 +260,13 @@ void ConstruirRango()
 
       rango_calculado = true;
       rango_fijado = true;
-      Print("Rango finalizado y fijado. Top: ", rango_top, " Bottom: ", rango_bottom);
+      Print("Rango finalizado y FIJADO. Operativa habilitada. Top: ", rango_top, " Bottom: ", rango_bottom);
+   }
+   else
+   {
+      // Mientras estamos en el periodo de formación (en_rango), 
+      // nos aseguramos de que el rango NO esté fijado para evitar entradas prematuras.
+      rango_fijado = false;
    }
 }
 
