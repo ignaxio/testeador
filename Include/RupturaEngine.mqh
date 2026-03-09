@@ -106,6 +106,14 @@ int EngineOnInit()
 
 void EngineOnTick()
 {
+   // Mostrar comentario con las horas en el gráfico
+   string msg = StringFormat("Broker: %s\nLondon: %s\nNY: %s\nUTC: %s", 
+      TimeToString(TimeCurrent(), TIME_DATE|TIME_MINUTES|TIME_SECONDS),
+      TimeToString(CTimeService::GetMarketTime(ZONE_LONDON), TIME_MINUTES|TIME_SECONDS),
+      TimeToString(CTimeService::GetMarketTime(ZONE_NEWYORK), TIME_MINUTES|TIME_SECONDS),
+      TimeToString(CTimeService::GetUTCTime(), TIME_MINUTES|TIME_SECONDS));
+   Comment(msg);
+
    if(!EsNuevaVela(ultima_vela_time, time_frame))
       return;
 
