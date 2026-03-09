@@ -73,6 +73,9 @@ void CTimeService::UpdateOffset()
    if(m_last_update_day == today_start && m_is_initialized)
       return;
 
+   // En el tester, el offset solo cambia en fechas de cambio de DST (2 veces al año)
+   // No necesitamos recalcularlo todos los días si no es necesario, pero el cache diario es seguro.
+   
    // 1. Auto-detección en Live
    if(!MQLInfoInteger(MQL_TESTER))
    {

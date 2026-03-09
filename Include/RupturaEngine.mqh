@@ -106,15 +106,21 @@ int EngineOnInit()
 
 void EngineOnTick()
 {
-   // Mostrar comentario con las horas en el gráfico
-   string msg = StringFormat("Broker: %s\nLondon: %s\nNY: %s\nUTC: %s", 
-      TimeToString(TimeCurrent(), TIME_DATE|TIME_MINUTES|TIME_SECONDS),
-      TimeToString(CTimeService::GetMarketTime(ZONE_LONDON), TIME_MINUTES|TIME_SECONDS),
-      TimeToString(CTimeService::GetMarketTime(ZONE_NEWYORK), TIME_MINUTES|TIME_SECONDS),
-      TimeToString(CTimeService::GetUTCTime(), TIME_MINUTES|TIME_SECONDS));
-   Comment(msg);
+   bool is_new_bar = EsNuevaVela(ultima_vela_time, time_frame);
+   
+   // 1. Mostrar comentario con las horas en el gráfico
+   // Optimización: Solo en modo visual y cada nueva vela (o cada N ticks si fuera necesario, pero vela es suficiente para monitoreo)
+   if(MQLInfoInteger(MQL_VISUAL_MODE) && is_new_bar)
+   {
+      string msg = StringFormat("Broker: %s\nLondon: %s\nNY: %s\nUTC: %s", 
+         TimeToString(TimeCurrent(), TIME_DATE|TIME_MINUTES|TIME_SECONDS),
+         TimeToString(CTimeService::GetMarketTime(ZONE_LONDON), TIME_MINUTES|TIME_SECONDS),
+         TimeToString(CTimeService::GetMarketTime(ZONE_NEWYORK), TIME_MINUTES|TIME_SECONDS),
+         TimeToString(CTimeService::GetUTCTime(), TIME_MINUTES|TIME_SECONDS));
+      Comment(msg);
+   }
 
-   if(!EsNuevaVela(ultima_vela_time, time_frame))
+   if(!is_new_bar)
       return;
 
    if(EsNuevoDia(ultimo_dia))
