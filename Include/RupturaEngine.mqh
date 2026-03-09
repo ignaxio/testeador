@@ -149,7 +149,9 @@ void ResetearDia()
    rango_top = 0;
    rango_bottom = 0;
 
-   Print("Nuevo día detectado. Variables reseteadas.");
+   MqlDateTime dt_broker_now;
+   TimeCurrent(dt_broker_now);
+   PrintFormat("Nuevo día detectado (%02d:%02d:%02d). Variables reseteadas.", dt_broker_now.hour, dt_broker_now.min, dt_broker_now.sec);
 }
 
 void ConstruirRango()
@@ -200,6 +202,15 @@ void ConstruirRango()
 
    post_rango = (time_now >= t_fin_rango);
 
+   // Bloqueo de seguridad: No puede ser post_rango si ni siquiera hemos llegado a la hora de inicio hoy
+   if(time_now < t_inicio_rango)
+   {
+      post_rango = false;
+      en_rango = false;
+      rango_fijado = false;
+      rango_calculado = false;
+   }
+
    if(!en_rango && !post_rango)
       return; // Aún no ha empezado el rango
 
@@ -229,6 +240,18 @@ void ConstruirRango()
 
    if(index_inicio < 0 || index_fin < 0) return;
 
+   // VALIDACIÓN DE FECHA ESTRICTA: 
+   // Asegurar que las velas encontradas pertenecen al día actual del broker
+   MqlDateTime dt_vela, dt_broker_now;
+   TimeCurrent(dt_broker_now);
+   TimeToStruct(iTime(_Symbol, time_frame, index_inicio), dt_vela);
+   
+   if(dt_vela.day != dt_broker_now.day || dt_vela.mon != dt_broker_now.mon)
+   {
+      // Las velas encontradas son de otro día (probablemente ayer)
+      return; 
+   }
+
    rango_top = -DBL_MAX;
    rango_bottom = DBL_MAX;
 
@@ -245,14 +268,15 @@ void ConstruirRango()
    DibujarRango(dt_inicio_rango_broker, rango_top, dt_fin_rango_broker, rango_bottom);
 
    // 5. Si ya terminó el periodo del rango, fijarlo y validar
-   if(post_rango)
+   if(post_rango && !rango_fijado)
    {
       double tamaño_rango = (rango_top - rango_bottom) / _Point;
       
       // Solo fijamos el rango si cumple el tamaño mínimo al terminar el tiempo
       if(tamaño_rango < rango_minimo_puntos)
       {
-         Print("Rango finalizado pero INVÁLIDO por tamaño insuficiente (", tamaño_rango, " pts < ", rango_minimo_puntos, " pts).");
+         if(!rango_calculado)
+            PrintFormat("Rango finalizado pero INVÁLIDO por tamaño insuficiente (%.1f pts < %d pts).", tamaño_rango, rango_minimo_puntos);
          rango_calculado = true;
          rango_fijado = false; 
          return;
@@ -260,13 +284,18 @@ void ConstruirRango()
 
       rango_calculado = true;
       rango_fijado = true;
-      Print("Rango finalizado y FIJADO. Operativa habilitada. Top: ", rango_top, " Bottom: ", rango_bottom);
+      
+      MqlDateTime dt_b;
+      TimeCurrent(dt_b);
+      PrintFormat("%02d:%02d:%02d Rango finalizado y FIJADO. Operativa habilitada. Top: %.5f Bottom: %.5f", 
+                  dt_b.hour, dt_b.min, dt_b.sec, rango_top, rango_bottom);
    }
-   else
+   else if(en_rango)
    {
       // Mientras estamos en el periodo de formación (en_rango), 
       // nos aseguramos de que el rango NO esté fijado para evitar entradas prematuras.
       rango_fijado = false;
+      rango_calculado = false;
    }
 }
 
