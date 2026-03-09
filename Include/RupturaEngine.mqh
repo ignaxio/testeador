@@ -70,6 +70,7 @@ datetime ultimo_dia = 0;
 datetime ultima_vela_time = 0;
 
 bool rango_calculado = false;
+bool rango_fijado = false; // El rango ya no crece y es válido para entradas
 bool trade_ejecutado_hoy = false;
 
 double rango_top = 0;
@@ -111,10 +112,10 @@ void EngineOnTick()
    if(EsNuevoDia(ultimo_dia))
       ResetearDia();
 
-   if(!rango_calculado)
+   if(!rango_fijado)
       ConstruirRango();
 
-   if(rango_calculado && !trade_ejecutado_hoy)
+   if(rango_fijado && !trade_ejecutado_hoy)
    {
       bool horario_activo = false;
       if(modo_horario == MODO_MERCADO)
@@ -142,6 +143,7 @@ void EngineOnTick()
 void ResetearDia()
 {
    rango_calculado = false;
+   rango_fijado = false;
    trade_ejecutado_hoy = false;
 
    rango_top = 0;
@@ -154,45 +156,54 @@ void ConstruirRango()
 {
    if(modo_horario == MODO_MERCADO && !CTimeService::IsInitialized()) return;
 
-   // 1. Comprobar si ya ha pasado el horario del rango
+   // 1. Comprobar si estamos dentro o después del horario del rango
    bool en_rango = false;
-   if(modo_horario == MODO_MERCADO)
-      en_rango = CTimeService::IsMarketSessionActive(zona_mercado, hora_inicio_rango, hora_fin_rango);
-   else
-      en_rango = IsBrokerSessionActive(hora_inicio_rango, hora_fin_rango);
-
-   if(en_rango)
-      return; // Aún estamos dentro del rango, no calcular
-
-   // 2. Asegurarnos de que el rango no se calcule antes de que empiece la sesión operativa
+   bool post_rango = false;
+   
    datetime time_now;
-   datetime t_fin_rango;
+   datetime t_inicio_rango, t_fin_rango;
 
    if(modo_horario == MODO_MERCADO)
    {
       time_now = CTimeService::GetMarketTime(zona_mercado);
+      en_rango = CTimeService::IsMarketSessionActive(zona_mercado, hora_inicio_rango, hora_fin_rango);
+      
       MqlDateTime dt_m;
       TimeToStruct(time_now, dt_m);
+      
+      dt_m.hour = (int)StringToInteger(StringSubstr(hora_inicio_rango, 0, 2));
+      dt_m.min = (int)StringToInteger(StringSubstr(hora_inicio_rango, 3, 2));
+      dt_m.sec = 0;
+      t_inicio_rango = StructToTime(dt_m);
+      
       dt_m.hour = (int)StringToInteger(StringSubstr(hora_fin_rango, 0, 2));
       dt_m.min = (int)StringToInteger(StringSubstr(hora_fin_rango, 3, 2));
-      dt_m.sec = 0;
       t_fin_rango = StructToTime(dt_m);
    }
    else
    {
       time_now = TimeCurrent();
+      en_rango = IsBrokerSessionActive(hora_inicio_rango, hora_fin_rango);
+      
       MqlDateTime dt_b;
       TimeToStruct(time_now, dt_b);
+      
+      dt_b.hour = (int)StringToInteger(StringSubstr(hora_inicio_rango, 0, 2));
+      dt_b.min = (int)StringToInteger(StringSubstr(hora_inicio_rango, 3, 2));
+      dt_b.sec = 0;
+      t_inicio_rango = StructToTime(dt_b);
+      
       dt_b.hour = (int)StringToInteger(StringSubstr(hora_fin_rango, 0, 2));
       dt_b.min = (int)StringToInteger(StringSubstr(hora_fin_rango, 3, 2));
-      dt_b.sec = 0;
       t_fin_rango = StructToTime(dt_b);
    }
 
-   if(time_now < t_fin_rango)
-      return;
+   post_rango = (time_now >= t_fin_rango);
 
-   // 3. Obtener los timestamps de inicio y fin para el broker
+   if(!en_rango && !post_rango)
+      return; // Aún no ha empezado el rango
+
+   // 2. Obtener los timestamps de inicio y fin para el broker (necesarios para iBarShift)
    datetime dt_inicio_rango_broker, dt_fin_rango_broker;
 
    if(modo_horario == MODO_MERCADO)
@@ -201,45 +212,22 @@ void ConstruirRango()
       datetime market_ref = CTimeService::GetMarketTime(zona_mercado, temp_broker);
       int offset_market_to_broker = (int)(temp_broker - market_ref);
 
-      MqlDateTime dt_start, dt_end;
-      TimeToStruct(market_ref, dt_start);
-      dt_start.hour = (int)StringToInteger(StringSubstr(hora_inicio_rango, 0, 2));
-      dt_start.min = (int)StringToInteger(StringSubstr(hora_inicio_rango, 3, 2));
-      dt_start.sec = 0;
-
-      TimeToStruct(market_ref, dt_end);
-      dt_end.hour = (int)StringToInteger(StringSubstr(hora_fin_rango, 0, 2));
-      dt_end.min = (int)StringToInteger(StringSubstr(hora_fin_rango, 3, 2));
-      dt_end.sec = 0;
-
-      dt_inicio_rango_broker = StructToTime(dt_start) + offset_market_to_broker;
-      dt_fin_rango_broker = StructToTime(dt_end) + offset_market_to_broker;
+      dt_inicio_rango_broker = t_inicio_rango + offset_market_to_broker;
+      dt_fin_rango_broker = t_fin_rango + offset_market_to_broker;
    }
    else
    {
-      MqlDateTime dt_start, dt_end;
-      TimeToStruct(time_now, dt_start);
-      dt_start.hour = (int)StringToInteger(StringSubstr(hora_inicio_rango, 0, 2));
-      dt_start.min = (int)StringToInteger(StringSubstr(hora_inicio_rango, 3, 2));
-      dt_start.sec = 0;
-
-      TimeToStruct(time_now, dt_end);
-      dt_end.hour = (int)StringToInteger(StringSubstr(hora_fin_rango, 0, 2));
-      dt_end.min = (int)StringToInteger(StringSubstr(hora_fin_rango, 3, 2));
-      dt_end.sec = 0;
-
-      dt_inicio_rango_broker = StructToTime(dt_start);
-      dt_fin_rango_broker = StructToTime(dt_end);
+      dt_inicio_rango_broker = t_inicio_rango;
+      dt_fin_rango_broker = t_fin_rango;
    }
 
+   // 3. Calcular el rango actual (basado en lo que llevamos de tiempo)
+   datetime dt_limite_actual = post_rango ? dt_fin_rango_broker : TimeCurrent();
+   
    int index_inicio = iBarShift(_Symbol, time_frame, dt_inicio_rango_broker, false);
-   int index_fin    = iBarShift(_Symbol, time_frame, dt_fin_rango_broker, false);
+   int index_fin    = iBarShift(_Symbol, time_frame, dt_limite_actual, false);
 
-   if(index_inicio < 0 || index_fin < 0)
-   {
-      Print("Error obteniendo barras del rango.");
-      return;
-   }
+   if(index_inicio < 0 || index_fin < 0) return;
 
    rango_top = -DBL_MAX;
    rango_bottom = DBL_MAX;
@@ -249,28 +237,29 @@ void ConstruirRango()
       double high = iHigh(_Symbol, time_frame, i);
       double low  = iLow(_Symbol, time_frame, i);
 
-      if(high > rango_top)
-         rango_top = high;
-
-      if(low < rango_bottom)
-         rango_bottom = low;
+      if(high > rango_top) rango_top = high;
+      if(low < rango_bottom) rango_bottom = low;
    }
 
-   double tamaño_rango = (rango_top - rango_bottom) / _Point;
-
-   if(tamaño_rango < rango_minimo_puntos)
-   {
-      Print("Rango inválido por tamaño mínimo.");
-      rango_calculado = true; 
-      return;
-   }
-
-   rango_calculado = true;
-   
+   // 4. Dibujar el rango dinámicamente
    DibujarRango(dt_inicio_rango_broker, rango_top, dt_fin_rango_broker, rango_bottom);
 
-   Print("Rango calculado y dibujado correctamente.");
-   Print("Top: ", rango_top, " Bottom: ", rango_bottom);
+   // 5. Si ya terminó el periodo del rango, fijarlo y validar
+   if(post_rango)
+   {
+      double tamaño_rango = (rango_top - rango_bottom) / _Point;
+      if(tamaño_rango < rango_minimo_puntos)
+      {
+         Print("Rango inválido por tamaño mínimo.");
+         rango_calculado = true;
+         rango_fijado = false; 
+         return;
+      }
+
+      rango_calculado = true;
+      rango_fijado = true;
+      Print("Rango finalizado y fijado. Top: ", rango_top, " Bottom: ", rango_bottom);
+   }
 }
 
 void EvaluarEntrada()
