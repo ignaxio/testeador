@@ -40,7 +40,7 @@ int OnInit()
    ratio             = 3;
    sl_fijo           = false; // Usar riesgo por porcentaje
    Lots              = 0.1;
-   porcentaje_riesgo = 1;
+   porcentaje_riesgo = 0.6;
    
    // --- Filtros ---
    usar_filtro_volumen           = false;

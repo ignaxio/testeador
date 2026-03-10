@@ -41,7 +41,7 @@ int OnInit()
    ratio             = 3.0;
    sl_fijo           = false;
    Lots              = 0.1;
-   porcentaje_riesgo = 1.0;
+   porcentaje_riesgo = 0.4;
    
    // --- Gestión de SL Dinámico (Desactivado) ---
    usar_mover_sl_a_be  = false;
