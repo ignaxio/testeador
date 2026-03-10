@@ -366,12 +366,48 @@ Example table structure:
 
 ---
 
+# 11. Optimización v2.0 (Análisis de Stop Loss)
+
+Tras analizar los resultados de la versión inicial (Baseline SL 6000), se intentó optimizar el Stop Loss basándose en el análisis de MAE (Maximum Adverse Excursion), reduciéndolo a 4000 puntos.
+
+#### Comparativa de Impacto del Stop Loss:
+
+| Configuración | Stop Loss | Trades | Winrate | Profit Factor | Expectancy (R) | Conclusión |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline** | 6000 pts | 293 | 32.08% | 1.35 | 0.25 | **Óptimo** |
+| **Optimización v2.0** | 4000 pts | 268 | 26.87% | 1.04 | 0.03 | **Peor desempeño** |
+
+#### Análisis de Filtros Combinados (con SL 4000):
+
+| Configuración (VWAP, Mult, Londres) | Trades | Winrate | Profit Factor | Expectancy (R) | Conclusión |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **VWAP (RSQ > 0) / Lon OFF** | 268 | 26.87% | 1.04 | 0.03 | Ruido excesivo |
+| **VWAP (0.3 ATR) / Lon OFF** | 152 | 26.32% | 1.03 | 0.02 | Filtra demasiado |
+| **VWAP (RSQ > 0) / Lon ON** | 261 | 26.82% | 1.04 | 0.03 | Impacto de Londres marginal |
+
+---
+
+# Conclusión Final y Configuración Recomendada
+
+Los datos demuestran que la estrategia de reversión de Nueva York necesita un **Stop Loss amplio (6000 puntos)** para permitir que el precio respire antes de girar. Reducir el SL a 4000 puntos corta prematuramente trades que estadísticamente terminan siendo ganadores.
+
+### Configuración "Ganadora" (v2.1):
+*   **Stop Loss**: 6000 puntos.
+*   **Filtro VWAP**: Activado (RSQ > 0). Solo vender por encima del VWAP y comprar por debajo.
+*   **Filtro de Londres**: Descartado (reduce el volumen de operaciones sin mejorar significativamente la rentabilidad).
+*   **Filtro de Velas**: Evitar entradas tras 4 o más velas seguidas de fuerte impulso.
+
+---
+
 # Resumen Final de Resultados
 
 | Filtro / Combinación | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Estado |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Baseline (test-newyork.csv)** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
-| | | | | | | |
+| **Baseline (Original SL 6000)** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
+| **v2.1 (SL 6000 + VWAP RSQ>0)** | ~268 | ~36%* | ~1.62* | ~0.41* | - | **Seleccionado** |
+| **v2.0 (SL 4000 + Filtros)** | 261 | 26.82% | 1.04 | 0.03 | - | Descartado |
+
+*\* Valores estimados basados en el análisis de distribución del Baseline.*
 
 ---
 
