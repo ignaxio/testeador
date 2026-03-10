@@ -68,16 +68,9 @@ public:
    {
       double equity = AccountInfoDouble(ACCOUNT_EQUITY);
       double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-      double profit_actual = balance - m_balance_inicial;
       double dd_actual = m_balance_inicial - equity;
 
-      // 1. Modo "Finish" (Cerca del objetivo)
-      // Si falta menos del 2% para el objetivo, reducimos riesgo a la mitad
-      double dist_to_target = m_target_profit - profit_actual;
-      if(dist_to_target > 0 && dist_to_target < (m_balance_inicial * 0.02))
-         return 0.5;
-
-      // 2. Modo "Safety" (Cerca del Max Loss Total)
+      // 1. Modo "Safety" (Cerca del Max Loss Total)
       // Riesgo escala linealmente hacia abajo conforme nos acercamos al límite
       if(dd_actual > (m_max_pérdida_total * 0.7)) // Si hemos consumido el 70% del DD permitido
       {
@@ -119,11 +112,11 @@ public:
          return false;
       }
 
-      // 3. Objetivo alcanzado
-      if(m_balance_inicial > 0 && balance - m_balance_inicial >= m_target_profit)
+      // 3. Objetivo alcanzado (Detección por Equidad para cierre inmediato)
+      if(m_balance_inicial > 0 && equity - m_balance_inicial >= m_target_profit)
       {
          if(!m_limit_reached) {
-            Print("GESTIÓN RIESGO: Objetivo de beneficio ALCANZADO (", NormalizeDouble(balance - m_balance_inicial, 2), "). Prueba superada.");
+            PrintFormat("GESTIÓN RIESGO: Objetivo de beneficio ALCANZADO (%.2f). Prueba superada.", equity - m_balance_inicial);
             m_limit_reached = true;
          }
          return false;
@@ -138,10 +131,11 @@ public:
    {
       double equity = AccountInfoDouble(ACCOUNT_EQUITY);
       double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-      Print("GESTIÓN RIESGO STATUS: Balance Inicial: ", m_balance_inicial, 
-            " | Equity Actual: ", NormalizeDouble(equity, 2), 
-            " | Drawdown Actual: ", NormalizeDouble(m_balance_inicial - equity, 2), 
-            " / ", NormalizeDouble(m_max_pérdida_total, 2));
+      double current_profit = equity - m_balance_inicial;
+      double current_dd = m_balance_inicial - equity;
+
+      PrintFormat("GESTIÓN RIESGO STATUS: Balance Inicial: %.2f | Equity: %.2f | DD: %.2f/%.2f | Profit: %.2f/%.2f", 
+                  m_balance_inicial, equity, current_dd, m_max_pérdida_total, current_profit, m_target_profit);
    }
 
    void CheckGlobalLimits(long magic = -1)

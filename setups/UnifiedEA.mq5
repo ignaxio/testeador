@@ -29,6 +29,11 @@ CRupturaEngine       engineLnd;
 CRupturaEngine       engineNY;
 CGestionRiesgoUnified riskControl;
 
+// --- VARIABLES DE ESTADO ---
+double   g_dynamic_mult = 1.0;
+bool     g_can_operate = true;
+datetime g_last_bar_risk = 0;
+
 //+------------------------------------------------------------------+
 //| Expert initialization                                            |
 //+------------------------------------------------------------------+
@@ -75,6 +80,7 @@ int OnInit()
       engineLnd.usar_filtro_exclusion_rango = true;
       engineLnd.usar_filtro_sma200 = true;
       engineLnd.permitir_viernes   = false;
+      engineLnd.usar_scoring      = true;
       
       if(engineLnd.Init() != INIT_SUCCEEDED) return INIT_FAILED;
    }
@@ -91,7 +97,7 @@ int OnInit()
       engineNY.hora_fin_rango     = "09:30";
       engineNY.hora_inicio_operativa = "09:31";
       engineNY.hora_fin_operativa    = "11:00";
-      engineNY.cerramos_trades       = false;
+      engineNY.cerramos_trades       = true;
       engineNY.hora_fin_sesion       = "14:30";
       engineNY.direccion          = Reversion;
       engineNY.puntos_sl          = 6000;
@@ -99,6 +105,7 @@ int OnInit()
       engineNY.porcentaje_riesgo  = InpRiskBase;
       engineNY.usar_filtro_vwap   = false;
       engineNY.usar_filtro_exclusion_rango = true;
+      engineNY.usar_scoring        = true;
       
       if(engineNY.Init() != INIT_SUCCEEDED) return INIT_FAILED;
    }
@@ -111,23 +118,37 @@ int OnInit()
 //+------------------------------------------------------------------+
 void OnTick()
 {
-   // 1. Validar si la cuenta está en condiciones de operar
-   if(!riskControl.CanOperate()) 
-      return;
+   // 1. SEGURIDAD (OnTick): Esto DEBE ejecutarse en cada tick por protección de la cuenta (Equity).
+   // Cerramos todas las posiciones inmediatamente si se alcanza el Profit Target o el Max Loss.
+   riskControl.CheckGlobalLimits();
 
-   // 2. Obtener multiplicador de riesgo dinámico (Safety / Finish)
-   double dynamicMult = riskControl.GetDynamicRiskMultiplier();
+   // 2. OPERATIVA DE ENTRADAS (Optimizado OnBar): Validamos límites de fondeo y riesgo dinámico
+   // solo al cierre de vela para evitar cálculos innecesarios en cada tick.
+   datetime current_bar = iTime(_Symbol, PERIOD_M2, 0);
+   if(current_bar != g_last_bar_risk)
+   {
+      g_last_bar_risk = current_bar;
+      g_can_operate = riskControl.CanOperate();
+      if(g_can_operate)
+         g_dynamic_mult = riskControl.GetDynamicRiskMultiplier();
+   }
 
-   // 3. Ejecutar motores
+   // 3. GESTIÓN DE MOTORES
+   // El OnTick de cada motor ahora es inteligente: gestiona SL/Cierres en cada tick 
+   // pero busca nuevas entradas solo al cierre de vela.
    if(InpLndEnable)
    {
-      engineLnd.porcentaje_riesgo = InpRiskBase * dynamicMult;
+      if(g_can_operate) engineLnd.porcentaje_riesgo = InpRiskBase * g_dynamic_mult;
+      else engineLnd.porcentaje_riesgo = 0; // Bloqueo de entradas
+      
       engineLnd.OnTick();
    }
    
    if(InpNYEnable)
    {
-      engineNY.porcentaje_riesgo = InpRiskBase * dynamicMult;
+      if(g_can_operate) engineNY.porcentaje_riesgo = InpRiskBase * g_dynamic_mult;
+      else engineNY.porcentaje_riesgo = 0; // Bloqueo de entradas
+      
       engineNY.OnTick();
    }
 }

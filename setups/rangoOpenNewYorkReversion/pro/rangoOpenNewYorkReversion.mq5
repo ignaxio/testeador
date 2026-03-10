@@ -32,7 +32,7 @@ int OnInit()
    // --- Configuración Operativa ---
    engine.hora_inicio_operativa = "09:31";
    engine.hora_fin_operativa    = "11:00";
-   engine.cerramos_trades       = false;
+   engine.cerramos_trades       = true;
    engine.hora_fin_sesion       = "14:30";
    engine.direccion             = Reversion;
    engine.permitir_buy          = true;

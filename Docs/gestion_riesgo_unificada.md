@@ -35,24 +35,26 @@ Se añadirán nuevos parámetros globales para el control estricto de la cuenta:
 El riesgo por operación ya no será estático (ej. 0.5% fijo), sino que se ajustará según la situación de la cuenta:
 
 ### 3.1 Proximidad al Target (Modo "Finish")
-*   Si la cuenta está a menos de 2R de pasar el objetivo, el EA reducirá el riesgo (ej. de 0.5% a 0.25%) para asegurar el pase con baja volatilidad.
-*   *Lógica*: "Prefiero tardar 3 días más en pasar la cuenta que arriesgarme a un drawdown fuerte justo antes de la meta".
+*   Cuando la **Equidad (Equity)** de la cuenta alcanza el objetivo de beneficio configurado, el EA cierra inmediatamente todas las posiciones abiertas y detiene la operativa.
+*   *Lógica*: "Prefiero asegurar el pase de la cuenta en cuanto toquemos el número mágico, sin importar si el trade actual tenía un ratio objetivo mayor".
+*   Se elimina la reducción de riesgo previa al target para no alargar innecesariamente la consecución del objetivo.
 
 ### 3.2 Proximidad al Max Loss (Modo "Safety")
-*   Si el drawdown acumulado se acerca al límite (ej. estamos al 6% de un 8% permitido), el riesgo se reduce drásticamente para evitar la quiebra de la cuenta.
-*   *Fórmula Sugerida*: `Riesgo Actual = Riesgo Base * (Distancia al Max Loss / Distancia Inicial)`.
+*   Si el drawdown acumulado se acerca al límite (ej. estamos al 70% del DD permitido), el riesgo se reduce dinámicamente.
+*   *Fórmula*: `Riesgo Actual = Riesgo Base * (Distancia al Max Loss / Distancia Inicial)`.
+*   Esto proporciona una "frenada de emergencia" suave que permite seguir operando con lotajes mínimos para intentar la recuperación sin quebrar la cuenta.
 
 ---
 
 ## 4. Clasificación de Estrategias por Puntuación (Scoring)
 
-Dividiremos los trades en 3 grupos de probabilidad basados en los filtros analizados previamente. Cada grupo tendrá un multiplicador de riesgo:
+Dividiremos los trades en 3 grupos de probabilidad basados en los filtros analizados y validados estadísticamente. Cada grupo tendrá un multiplicador de riesgo:
 
-| Grupo | Calificación | Criterios (Ejemplo) | Riesgo Sugerido |
+| Grupo | Calificación | Criterios (Simplificados v3.0) | Riesgo Sugerido |
 | :--- | :--- | :--- | :--- |
-| **Grupo A** | Alta Probabilidad | Cumple todos los filtros + Filtro VWAP + Filtro Londres | **100% del riesgo base** |
-| **Grupo B** | Media Probabilidad | Cumple filtros base + Exclusión de Rango | **70% del riesgo base** |
-| **Grupo C** | Baja Probabilidad | Solo filtros base | **40% del riesgo base** (o no operar) |
+| **Grupo A** | Alta Probabilidad | **NY Reversión**: Operativa en **Viernes** | **100% del riesgo base** |
+| **Grupo B** | Media Probabilidad | **Londres Continuación**: Todos los días | **70% del riesgo base** |
+| **Grupo C** | Baja Probabilidad | **NY Reversión**: Resto de días (Lunes a Jueves) | **40% del riesgo base** |
 
 ---
 
@@ -68,10 +70,15 @@ Para que esto sea factible sin romper el motor actual, propongo:
 
 ## 6. Análisis de Factibilidad
 
-### ¿Es factible unificar los setups?
-**SÍ**, es muy factible y recomendable. La estructura actual de `RupturaEngine.mqh` ya es modular. Solo necesitamos:
-*   Pasar las variables globales del motor (como `hora_inicio_rango`, `puntos_sl`, etc.) a una estructura o clase para que cada instancia de la estrategia tenga sus propios datos.
-*   Crear un bucle en el `OnTick` del EA principal que recorra todas las estrategias activas.
+### 6.1 Arquitectura de Ejecución (Optimización)
+Para maximizar la eficiencia y seguridad, el EA diferencia entre dos ciclos:
+
+1.  **Ciclo OnTick (Seguridad Directa)**:
+    *   `CheckGlobalLimits()`: Verifica la **Equidad** en cada tick. Si se toca el Profit Target o el Max Loss, cierra todo al instante.
+    *   **Gestión de SL (Trail/BE)**: Cada motor ajusta los niveles de Stop Loss en tiempo real según el precio actual.
+2.  **Ciclo OnBar (Operativa y Filtros)**:
+    *   `CanOperate()` y `GetDynamicRiskMultiplier()`: Se evalúan solo al cierre de vela. Esto decide si se permiten nuevas entradas y con qué lotaje.
+    *   **Detección de Señales**: Las estrategias buscan rupturas de rango solo al confirmar el cierre de la vela de referencia.
 
 ---
 

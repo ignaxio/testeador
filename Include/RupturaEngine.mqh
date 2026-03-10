@@ -93,6 +93,7 @@ public:
    bool              permitir_jueves;
    bool              permitir_viernes;
    bool              imprimir_csv;
+   bool              usar_scoring; // Si es true, aplica reducción de riesgo por puntuación (A/B/C)
 
    int               MagicNumber;
    string            nombre_estrategia;
@@ -113,6 +114,7 @@ CRupturaEngine::CRupturaEngine()
    m_rango_calculado = false;
    m_rango_fijado = false;
    m_trade_ejecutado_hoy = false;
+   usar_scoring = false; // Por defecto desactivado para no afectar EAs individuales
    m_rango_top = 0;
    m_rango_bottom = 0;
    
@@ -164,9 +166,21 @@ int CRupturaEngine::Init()
 //+------------------------------------------------------------------+
 void CRupturaEngine::OnTick()
 {
+   // 1. GESTIÓN DE TRADES ABIERTOS Y LOGS (Siempre en cada tick para precisión)
+   if(cerramos_trades)
+      GestionarCierrePorHora();
+
+   // Gestión de SL (Trailing / BE) - Debe ser OnTick para reaccionar al precio al instante
+   AplicarGestionSLDinamico(MagicNumber, usar_mover_sl_a_be, ratio_activacion_be, porcentaje_sl_nuevo);
+
+   // Logger OnTick para capturar MAE/MFE reales
+   if(imprimir_csv)
+      m_logger.OnTick();
+
+   // 2. OPERATIVA DE ENTRADAS (Solo al cierre de vela)
    bool is_new_bar = EsNuevaVela(m_ultima_vela_time, time_frame);
    
-   // 1. Mostrar comentario con las horas en el gráfico (Solo si es la estrategia principal o mediante algún flag)
+   // Mostrar comentario solo en nueva vela o modo visual para no sobrecargar
    if(MQLInfoInteger(MQL_VISUAL_MODE) && is_new_bar)
    {
       string msg = StringFormat("Estrategia: %s\nBroker: %s\nLondon: %s\nNY: %s\nUTC: %s", 
@@ -181,6 +195,7 @@ void CRupturaEngine::OnTick()
    if(!is_new_bar)
       return;
 
+   // Lógica de entradas (Búsqueda de rango y señales)
    if(EsNuevoDia(m_ultimo_dia))
       ResetearDia();
 
@@ -198,15 +213,6 @@ void CRupturaEngine::OnTick()
       if(horario_activo)
          EvaluarEntrada();
    }
-
-   if(cerramos_trades)
-      GestionarCierrePorHora();
-
-   // Nueva gestión de SL
-   AplicarGestionSLDinamico(MagicNumber, usar_mover_sl_a_be, ratio_activacion_be, porcentaje_sl_nuevo);
-
-   if(imprimir_csv)
-      m_logger.OnTick();
 }
 
 //+------------------------------------------------------------------+
@@ -676,31 +682,22 @@ double CRupturaEngine::GetDailyATR(int period = 14)
 //+------------------------------------------------------------------+
 ENUM_TRADE_SCORE CRupturaEngine::CalculateTradeScore(double range_points, int consec)
 {
+   if(!usar_scoring) return SCORE_A; // Si no usamos scoring, riesgo completo siempre (100%)
+
    MqlDateTime dt;
    TimeCurrent(dt);
-   
-   // Estrategia Londres (Continuación)
-   if(direccion == Continuacion)
-   {
-      bool range_ok = (range_points < 2000);
-      bool excl_ok = !ValidarExclusionRango(true, range_points); // Si NO está en zona de exclusión
-      
-      if(range_ok && excl_ok) return SCORE_A;
-      if(range_ok || excl_ok) return SCORE_B;
-      return SCORE_C;
-   }
    
    // Estrategia NY (Reversión)
    if(direccion == Reversion)
    {
-      bool friday = (dt.day_of_week == 5);
-      bool range_excl_ok = !ValidarExclusionRango(true, range_points);
-      bool consec_ok = (consec <= 2);
-      
-      if(friday && range_excl_ok) return SCORE_A;
-      if(range_excl_ok && consec_ok) return SCORE_A;
-      if(range_excl_ok || consec_ok) return SCORE_B;
-      return SCORE_C;
+      if(dt.day_of_week == 5) return SCORE_A; // NY Viernes -> Grupo A
+      return SCORE_C;                         // Resto de NY -> Grupo C
+   }
+   
+   // Estrategia Londres (Continuación)
+   if(direccion == Continuacion)
+   {
+      return SCORE_B; // LND -> Grupo B
    }
    
    return SCORE_B; // Por defecto

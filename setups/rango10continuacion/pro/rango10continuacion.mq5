@@ -56,7 +56,7 @@ int OnInit()
    // --- Sistema ---
    engine.MagicNumber       = 99901;
    engine.nombre_estrategia = "rango10-continuacion-pro-v1";
-   engine.imprimir_csv      = false;
+   engine.imprimir_csv      = true;
 
    return engine.Init();
 }

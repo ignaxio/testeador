@@ -32,7 +32,7 @@ int OnInit()
    // --- Configuración Operativa ---
    engine.hora_inicio_operativa = "09:31";
    engine.hora_fin_operativa    = "11:00";
-   engine.cerramos_trades       = false;
+   engine.cerramos_trades       = true;
    engine.hora_fin_sesion       = "14:30";
    engine.direccion             = Reversion;
    engine.permitir_buy          = true;
@@ -41,9 +41,9 @@ int OnInit()
    // --- Gestión de Riesgo (Optimizado) ---
    engine.puntos_sl         = 6000;
    engine.ratio             = 3.0;
-   engine.sl_fijo           = true;
+   engine.sl_fijo           = false;
    engine.Lots              = 0.1;
-   engine.porcentaje_riesgo = 1.0;
+   engine.porcentaje_riesgo = 0.6;
    
    // --- Filtros de Entrada (v2.2 / v3.0 Final) ---
    engine.usar_filtro_exclusion_rango   = true;  // Excluye rangos entre 3100 y 4500 puntos
@@ -61,7 +61,7 @@ int OnInit()
    // --- Configuración del Sistema ---
    engine.MagicNumber       = 12348;
    engine.nombre_estrategia = "ny-reversion-fridays-pro-v3";
-   engine.imprimir_csv      = false;
+   engine.imprimir_csv      = true;
 
    return engine.Init();
 }
