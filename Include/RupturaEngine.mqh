@@ -57,6 +57,7 @@ bool            permitir_martes;
 bool            permitir_miercoles;
 bool            permitir_jueves;
 bool            permitir_viernes;
+bool            imprimir_csv = true;
 
 int             MagicNumber;
 string          nombre_estrategia;
@@ -87,8 +88,11 @@ int EngineOnInit()
    Print("Motor de Rupturas iniciado: ", nombre_estrategia);
    trade.SetExpertMagicNumber(MagicNumber);
    
-   logger.SetStrategyName(nombre_estrategia);
-   logger.Init();
+   if(imprimir_csv)
+   {
+      logger.SetStrategyName(nombre_estrategia);
+      logger.Init();
+   }
    
    // Inicializar el servicio de tiempo
    CTimeService::Init();
@@ -149,7 +153,8 @@ void EngineOnTick()
    // Nueva gestión de SL
    AplicarGestionSLDinamico(MagicNumber, usar_mover_sl_a_be, ratio_activacion_be, porcentaje_sl_nuevo);
 
-   logger.OnTick();
+   if(imprimir_csv)
+      logger.OnTick();
 }
 
 //=========================
@@ -395,7 +400,20 @@ void EvaluarEntrada()
       tp_ejec = precio_ejec - (puntos_sl * ratio) * _Point;
    }
 
-   logger.OnTradeOpen(tipo_orden, precio_ejec, sl_ejec, tp_ejec, rango_top, rango_bottom, time_frame, (double)breakout_vol, range_in_points, dist_breakout);
+   if(imprimir_csv)
+   {
+      // Cálculos previos al log
+      double lonH, lonL;
+      GetLondonHighLow(lonH, lonL);
+      double yesH = iHigh(_Symbol, PERIOD_D1, 1);
+      double yesL = iLow(_Symbol, PERIOD_D1, 1);
+      double curVWAP = GetDailyVWAP();
+      int consec = GetConsecutiveCandles();
+
+      logger.OnTradeOpen(tipo_orden, precio_ejec, sl_ejec, tp_ejec, rango_top, rango_bottom, time_frame, (double)breakout_vol, range_in_points, dist_breakout,
+                         (precio_ejec - curVWAP)/_Point, (precio_ejec - lonH)/_Point, (precio_ejec - lonL)/_Point, 
+                         (precio_ejec - yesH)/_Point, (precio_ejec - yesL)/_Point, consec);
+   }
 
    EjecutarOrden(tipo_orden);
 }
@@ -435,7 +453,7 @@ void EjecutarOrden(ENUM_ORDER_TYPE tipo)
       Print("Trade ejecutado correctamente.");
       trade_ejecutado_hoy = true;
       
-      if(PositionSelectByMagic(MagicNumber))
+      if(imprimir_csv && PositionSelectByMagic(MagicNumber))
          logger.SetActiveTicket(PositionGetInteger(POSITION_TICKET));
    }
    else
@@ -522,6 +540,35 @@ bool PositionSelectByMagic(long magic)
          return true;
    }
    return false;
+}
+
+void GetLondonHighLow(double &h, double &l)
+{
+   h = 0; l = 0;
+   MqlRates rates[];
+   ArraySetAsSeries(rates, true);
+   int copied = CopyRates(_Symbol, PERIOD_M5, 0, 300, rates); // Últimas 25 horas aprox
+   bool first = true;
+   for(int i=0; i<copied; i++) {
+      if(CTimeService::IsMarketSessionActive(ZONE_LONDON, "08:00", "15:00", rates[i].time)) {
+         if(first) { h = rates[i].high; l = rates[i].low; first = false; }
+         else { if(rates[i].high > h) h = rates[i].high; if(rates[i].low < l) l = rates[i].low; }
+      }
+   }
+}
+
+int GetConsecutiveCandles()
+{
+   MqlRates rates[];
+   ArraySetAsSeries(rates, true);
+   if(CopyRates(_Symbol, time_frame, 1, 12, rates) < 1) return 0;
+   int count = 1;
+   bool bullish = (rates[0].close > rates[0].open);
+   for(int i=1; i<ArraySize(rates); i++) {
+      if((rates[i].close > rates[i].open) == bullish && rates[i].close != rates[i].open) count++;
+      else break;
+   }
+   return count;
 }
 
 //+------------------------------------------------------------------+

@@ -54,6 +54,7 @@ int OnInit()
    // --- Sistema ---
    MagicNumber       = 99901;
    nombre_estrategia = "rango10-continuacion-pro-v1";
+   imprimir_csv      = false;
 
    return EngineOnInit();
 }

@@ -59,6 +59,7 @@ int OnInit()
    // --- Configuración del Sistema ---
    MagicNumber       = 12346; // Cambiado para diferenciar de la v1
    nombre_estrategia = "newyork-reversion-v2";
+   imprimir_csv      = false;
 
    return EngineOnInit();
 }
