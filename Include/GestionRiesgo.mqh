@@ -7,8 +7,150 @@
 #property link      "https://www.mql5.com"
 #property strict
 
+#include <Trade/Trade.mqh>
+
+//+------------------------------------------------------------------+
+//| Clase Gestión de Riesgo Unified (Prop Firm Optimized)            |
+//+------------------------------------------------------------------+
+class CGestionRiesgoUnified
+{
+private:
+   double   m_balance_inicial;
+   double   m_target_profit;
+   double   m_max_pérdida_diaria;
+   double   m_max_pérdida_total;
+   bool     m_hard_stop;
+
+   double   GetRealizedDailyProfit()
+   {
+      datetime today = iTime(_Symbol, PERIOD_D1, 0);
+      if(!HistorySelect(today, TimeCurrent())) return 0;
+      
+      double profit = 0;
+      int total = HistoryDealsTotal();
+      for(int i=0; i<total; i++)
+      {
+         ulong ticket = HistoryDealGetTicket(i);
+         if(ticket > 0)
+         {
+            ENUM_DEAL_ENTRY entry = (ENUM_DEAL_ENTRY)HistoryDealGetInteger(ticket, DEAL_ENTRY);
+            if(entry == DEAL_ENTRY_OUT || entry == DEAL_ENTRY_OUT_BY)
+               profit += HistoryDealGetDouble(ticket, DEAL_PROFIT) + HistoryDealGetDouble(ticket, DEAL_COMMISSION) + HistoryDealGetDouble(ticket, DEAL_SWAP);
+         }
+      }
+      return profit;
+   }
+
+public:
+   CGestionRiesgoUnified() 
+   {
+      m_balance_inicial = 0;
+      m_target_profit = 0;
+      m_max_pérdida_diaria = 0;
+      m_max_pérdida_total = 0;
+      m_hard_stop = true;
+   }
+
+   void Configure(double balance, double target_perc, double daily_loss_perc, double total_loss_perc, bool hard_stop)
+   {
+      m_balance_inicial = balance;
+      m_target_profit = balance * (target_perc / 100.0);
+      m_max_pérdida_diaria = balance * (daily_loss_perc / 100.0);
+      m_max_pérdida_total = balance * (total_loss_perc / 100.0);
+      m_hard_stop = hard_stop;
+   }
+
+   // --- Lógica de Riesgo Dinámico ---
+   double GetDynamicRiskMultiplier()
+   {
+      double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+      double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+      double profit_actual = balance - m_balance_inicial;
+      double dd_actual = m_balance_inicial - equity;
+
+      // 1. Modo "Finish" (Cerca del objetivo)
+      // Si falta menos del 2% para el objetivo, reducimos riesgo a la mitad
+      double dist_to_target = m_target_profit - profit_actual;
+      if(dist_to_target > 0 && dist_to_target < (m_balance_inicial * 0.02))
+         return 0.5;
+
+      // 2. Modo "Safety" (Cerca del Max Loss Total)
+      // Riesgo escala linealmente hacia abajo conforme nos acercamos al límite
+      if(dd_actual > (m_max_pérdida_total * 0.7)) // Si hemos consumido el 70% del DD permitido
+      {
+         double dist_to_limit = m_max_pérdida_total - dd_actual;
+         double initial_buffer = m_max_pérdida_total;
+         double ratio = dist_to_limit / initial_buffer;
+         return MathMax(0.2, ratio); // Mínimo 20% del riesgo base
+      }
+
+      return 1.0;
+   }
+
+   bool CanOperate()
+   {
+      double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+      double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+      
+      // 1. Pérdida Total (Equity vs Balance Inicial)
+      if(m_balance_inicial - equity >= m_max_pérdida_total)
+      {
+         if(m_hard_stop) Print("GESTIÓN RIESGO: Límite de pérdida TOTAL alcanzado. (Equity: ", NormalizeDouble(equity, 2), " | Límite: ", NormalizeDouble(m_balance_inicial - m_max_pérdida_total, 2), ")");
+         return false;
+      }
+
+      // 2. Pérdida Diaria (Realizada + Flotante del día)
+      double floating_profit = equity - balance;
+      double realized_today = GetRealizedDailyProfit();
+      double total_today = realized_today + floating_profit;
+
+      if(total_today <= -m_max_pérdida_diaria)
+      {
+         if(m_hard_stop) Print("GESTIÓN RIESGO: Límite de pérdida DIARIA alcanzado. (Pérdida hoy: ", NormalizeDouble(total_today, 2), " | Límite diario: ", NormalizeDouble(-m_max_pérdida_diaria, 2), ")");
+         return false;
+      }
+
+      // 3. Objetivo alcanzado
+      if(balance - m_balance_inicial >= m_target_profit)
+      {
+         Print("GESTIÓN RIESGO: Objetivo de beneficio ALCANZADO (", NormalizeDouble(balance - m_balance_inicial, 2), "). Prueba superada.");
+         return false;
+      }
+
+      return true;
+   }
+   
+   // --- Información de Diagnóstico ---
+   void PrintStatus()
+   {
+      double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+      double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+      Print("GESTIÓN RIESGO STATUS: Balance Inicial: ", m_balance_inicial, 
+            " | Equity Actual: ", NormalizeDouble(equity, 2), 
+            " | Drawdown Actual: ", NormalizeDouble(m_balance_inicial - equity, 2), 
+            " / ", NormalizeDouble(m_max_pérdida_total, 2));
+   }
+
+   void CheckGlobalLimits(long magic = -1)
+   {
+      if(!CanOperate() && m_hard_stop)
+      {
+         CTrade trade_close;
+         for(int i=PositionsTotal()-1; i>=0; i--)
+         {
+            ulong ticket = PositionGetTicket(i);
+            if(ticket > 0)
+            {
+               if(magic == -1 || PositionGetInteger(POSITION_MAGIC) == magic)
+                  trade_close.PositionClose(ticket);
+            }
+         }
+      }
+   }
+};
+
 //=========================
-// FUNCIONES DE GESTIÓN DE RIESGO
+// FUNCIONES DE GESTIÓN DE RIESGO (Compatibilidad)
 //=========================
 
 double CalcularLotePorRiesgo(int sl_points, double risk_percent)

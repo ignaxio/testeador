@@ -52,9 +52,9 @@ bool EstamosEnHorarioOperativo(ENUM_MARKET_ZONE zone, string hora_inicio, string
 // FUNCIONES DE DIBUJO
 //=========================
 
-void DibujarRango(datetime t1, double p1, datetime t2, double p2)
+void DibujarRango(datetime t1, double p1, datetime t2, double p2, long magic = 0)
 {
-   string name = "rango_" + TimeToString(t1, TIME_DATE);
+   string name = "rango_" + IntegerToString(magic) + "_" + TimeToString(t1, TIME_DATE);
    
    ObjectDelete(0, name);
    

@@ -22,3 +22,10 @@ enum ENUM_DIRECCION
    Continuacion = 0,
    Reversion = 1
 };
+
+enum ENUM_TRADE_SCORE
+{
+   SCORE_A = 100, // 100% de riesgo base
+   SCORE_B = 70,  // 70% de riesgo base
+   SCORE_C = 40   // 40% de riesgo base
+};

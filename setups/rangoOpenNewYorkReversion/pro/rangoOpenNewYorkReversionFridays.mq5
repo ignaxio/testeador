@@ -12,56 +12,58 @@
 
 // NO HAY INPUTS - Versión especializada para VIERNES (Optimizado v3.0)
 
+CRupturaEngine engine;
+
 //+------------------------------------------------------------------+
 //| Expert initialization                                            |
 //+------------------------------------------------------------------+
 int OnInit()
 {
    // --- Configuración de Horario ---
-   modo_horario      = MODO_MERCADO;
-   zona_mercado      = ZONE_NEWYORK;
+   engine.modo_horario      = MODO_MERCADO;
+   engine.zona_mercado      = ZONE_NEWYORK;
    
    // --- Configuración de Rango (M2) ---
-   time_frame          = PERIOD_M2;
-   hora_inicio_rango   = "09:15";
-   hora_fin_rango      = "09:30";
-   rango_minimo_puntos = 100;
+   engine.time_frame          = PERIOD_M2;
+   engine.hora_inicio_rango   = "09:15";
+   engine.hora_fin_rango      = "09:30";
+   engine.rango_minimo_puntos = 100;
    
    // --- Configuración Operativa ---
-   hora_inicio_operativa = "09:31";
-   hora_fin_operativa    = "11:00";
-   cerramos_trades       = false;
-   hora_fin_sesion       = "14:30";
-   direccion             = Reversion;
-   permitir_buy          = true;
-   permitir_sell         = true;
+   engine.hora_inicio_operativa = "09:31";
+   engine.hora_fin_operativa    = "11:00";
+   engine.cerramos_trades       = false;
+   engine.hora_fin_sesion       = "14:30";
+   engine.direccion             = Reversion;
+   engine.permitir_buy          = true;
+   engine.permitir_sell         = true;
    
    // --- Gestión de Riesgo (Optimizado) ---
-   puntos_sl         = 6000;
-   ratio             = 3.0;
-   sl_fijo           = true;
-   Lots              = 0.1;
-   porcentaje_riesgo = 1.0;
+   engine.puntos_sl         = 6000;
+   engine.ratio             = 3.0;
+   engine.sl_fijo           = true;
+   engine.Lots              = 0.1;
+   engine.porcentaje_riesgo = 1.0;
    
    // --- Filtros de Entrada (v2.2 / v3.0 Final) ---
-   usar_filtro_exclusion_rango   = true;  // Excluye rangos entre 3100 y 4500 puntos
-   usar_filtro_velas_consecutivas = false;
-   usar_filtro_vwap               = false;
-   usar_filtro_londres            = false;
+   engine.usar_filtro_exclusion_rango   = true;  // Excluye rangos entre 3100 y 4500 puntos
+   engine.usar_filtro_velas_consecutivas = false;
+   engine.usar_filtro_vwap               = false;
+   engine.usar_filtro_londres            = false;
    
    // --- Filtro de Días (SOLO VIERNES) ---
-   permitir_lunes     = false;
-   permitir_martes    = false;
-   permitir_miercoles = false;
-   permitir_jueves    = false;
-   permitir_viernes   = true;
+   engine.permitir_lunes     = false;
+   engine.permitir_martes    = false;
+   engine.permitir_miercoles = false;
+   engine.permitir_jueves    = false;
+   engine.permitir_viernes   = true;
    
    // --- Configuración del Sistema ---
-   MagicNumber       = 12348;
-   nombre_estrategia = "ny-reversion-fridays-pro-v3";
-   imprimir_csv      = false;
+   engine.MagicNumber       = 12348;
+   engine.nombre_estrategia = "ny-reversion-fridays-pro-v3";
+   engine.imprimir_csv      = false;
 
-   return EngineOnInit();
+   return engine.Init();
 }
 
 //+------------------------------------------------------------------+
@@ -69,5 +71,5 @@ int OnInit()
 //+------------------------------------------------------------------+
 void OnTick()
 {
-   EngineOnTick();
+   engine.OnTick();
 }

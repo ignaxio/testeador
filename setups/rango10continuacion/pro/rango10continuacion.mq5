@@ -13,50 +13,52 @@
 
 // NO HAY INPUTS AQUÍ - Parámetros fijos para uso profesional
 
+CRupturaEngine engine;
+
 //+------------------------------------------------------------------+
 //| Expert initialization                                            |
 //+------------------------------------------------------------------+
 int OnInit()
 {
    // --- Configuración de Rango ---
-   time_frame          = PERIOD_M2;
-   modo_horario        = MODO_BROKER; // MODO_MERCADO (Auto DST) o MODO_BROKER (Estático)
-   zona_mercado        = ZONE_LONDON;
-   hora_inicio_rango   = "09:00";
-   hora_fin_rango      = "09:30";
-   rango_minimo_puntos = 100;
+   engine.time_frame          = PERIOD_M2;
+   engine.modo_horario        = MODO_BROKER; // MODO_MERCADO (Auto DST) o MODO_BROKER (Estático)
+   engine.zona_mercado        = ZONE_LONDON;
+   engine.hora_inicio_rango   = "09:00";
+   engine.hora_fin_rango      = "09:30";
+   engine.rango_minimo_puntos = 100;
    
    // --- Configuración Operativa ---
-   hora_inicio_operativa = "09:31";
-   hora_fin_operativa    = "12:00";
-   cerramos_trades       = true;
-   hora_fin_sesion       = "20:30";
-   direccion             = Continuacion;
-   permitir_buy          = true;
-   permitir_sell         = true;
+   engine.hora_inicio_operativa = "09:31";
+   engine.hora_fin_operativa    = "12:00";
+   engine.cerramos_trades       = true;
+   engine.hora_fin_sesion       = "20:30";
+   engine.direccion             = Continuacion;
+   engine.permitir_buy          = true;
+   engine.permitir_sell         = true;
    
    // --- Gestión de Riesgo ---
-   puntos_sl         = 10000;
-   ratio             = 3;
-   sl_fijo           = false; // Usar riesgo por porcentaje
-   Lots              = 0.1;
-   porcentaje_riesgo = 0.6;
+   engine.puntos_sl         = 10000;
+   engine.ratio             = 3;
+   engine.sl_fijo           = false; // Usar riesgo por porcentaje
+   engine.Lots              = 0.1;
+   engine.porcentaje_riesgo = 0.6;
    
    // --- Filtros ---
-   usar_filtro_volumen           = false;
-   volumen_limite                = 500;
-   usar_filtro_opening_range_size = true;
-   opening_range_size            = 2000;
-   usar_filtro_distancia_ruptura  = false;
-   distancia_ruptura_maxima      = 10.0;
-   usar_filtro_exclusion_rango   = true;
+   engine.usar_filtro_volumen           = false;
+   engine.volumen_limite                = 500;
+   engine.usar_filtro_opening_range_size = true;
+   engine.opening_range_size            = 2000;
+   engine.usar_filtro_distancia_ruptura  = false;
+   engine.distancia_ruptura_maxima      = 10.0;
+   engine.usar_filtro_exclusion_rango   = true;
    
    // --- Sistema ---
-   MagicNumber       = 99901;
-   nombre_estrategia = "rango10-continuacion-pro-v1";
-   imprimir_csv      = false;
+   engine.MagicNumber       = 99901;
+   engine.nombre_estrategia = "rango10-continuacion-pro-v1";
+   engine.imprimir_csv      = false;
 
-   return EngineOnInit();
+   return engine.Init();
 }
 
 //+------------------------------------------------------------------+
@@ -64,5 +66,5 @@ int OnInit()
 //+------------------------------------------------------------------+
 void OnTick()
 {
-   EngineOnTick();
+   engine.OnTick();
 }

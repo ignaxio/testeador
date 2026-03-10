@@ -25,6 +25,8 @@ public:
    double   yesterday_range;
    double   dist_breakout;
    long     ticket;
+   string   strategy_id;
+   long     magic;
    double   mae_pts;
    double   mfe_pts;
    string   sma_trend;
@@ -49,6 +51,8 @@ public:
       yesterday_range = 0;
       dist_breakout = 0;
       ticket = 0;
+      strategy_id = "";
+      magic = 0;
       mae_pts = 0;
       mfe_pts = 0;
       sma_trend = "";
@@ -107,7 +111,7 @@ public:
          {
             Print("Creando nuevo archivo CSV en carpeta COMMON: ", m_filename);
             FileWrite(handle, 
-               "Date", "TimeOpen", "TimeClose", "Direction", "EntryPrice", "StopLoss", "TakeProfit", 
+               "Strategy", "Magic", "Date", "TimeOpen", "TimeClose", "Direction", "EntryPrice", "StopLoss", "TakeProfit", 
                "ResultPoints", "ResultR", "MAE_Points", "MFE_Points", "SMA200_Trend", 
                "Breakout_Volume", "Duration_Minutes", "Spread_Entry",
                "OpeningRangeSize", "ATR", "YesterdayRange", "DistanceBreakout", 
@@ -120,10 +124,12 @@ public:
    }
 
    // Captura los datos iniciales cuando se abre una operación
-   void OnTradeOpen(ENUM_ORDER_TYPE tipo, double price, double sl, double tp, double r_top, double r_bottom, ENUM_TIMEFRAMES tf, double breakout_vol, double range_size, double dist_breakout, 
+   void OnTradeOpen(string strategy_name, long magic_num, ENUM_ORDER_TYPE tipo, double price, double sl, double tp, double r_top, double r_bottom, ENUM_TIMEFRAMES tf, double breakout_vol, double range_size, double dist_breakout, 
                  double d_vwap, double d_lon_h, double d_lon_l, double d_yes_h, double d_yes_l, int consec)
    {
       CTradeData *new_trade = new CTradeData();
+      new_trade.strategy_id = strategy_name;
+      new_trade.magic = magic_num;
       new_trade.time_open = TimeCurrent();
       new_trade.direction = (tipo == ORDER_TYPE_BUY) ? "LONG" : "SHORT";
       new_trade.entry_price = price;
@@ -290,6 +296,8 @@ private:
          Print("Escribiendo datos del trade en CSV (Carpeta COMMON)...");
          FileSeek(handle, 0, SEEK_END);
          FileWrite(handle, 
+            trade_data.strategy_id,
+            IntegerToString(trade_data.magic),
             TimeToString(trade_data.time_open, TIME_DATE),
             TimeToString(trade_data.time_open, TIME_MINUTES),
             TimeToString(time_close, TIME_MINUTES),
