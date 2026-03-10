@@ -30,6 +30,12 @@ public:
    string   sma_trend;
    double   breakout_volume;
    int      spread;
+   double   dist_vwap;
+   double   dist_london_h;
+   double   dist_london_l;
+   double   dist_yesterday_h;
+   double   dist_yesterday_l;
+   int      consecutive_candles;
 
    CTradeData()
    {
@@ -48,6 +54,12 @@ public:
       sma_trend = "";
       breakout_volume = 0;
       spread = 0;
+      dist_vwap = 0;
+      dist_london_h = 0;
+      dist_london_l = 0;
+      dist_yesterday_h = 0;
+      dist_yesterday_l = 0;
+      consecutive_candles = 0;
    }
 };
 
@@ -98,7 +110,9 @@ public:
                "Date", "TimeOpen", "TimeClose", "Direction", "EntryPrice", "StopLoss", "TakeProfit", 
                "ResultPoints", "ResultR", "MAE_Points", "MFE_Points", "SMA200_Trend", 
                "Breakout_Volume", "Duration_Minutes", "Spread_Entry",
-               "OpeningRangeSize", "ATR", "YesterdayRange", "DistanceBreakout", "DayOfWeek", "Month"
+               "OpeningRangeSize", "ATR", "YesterdayRange", "DistanceBreakout", 
+               "Dist_VWAP", "Dist_London_H", "Dist_London_L", "Dist_Yesterday_H", "Dist_Yesterday_L", "Consec_Candles",
+               "DayOfWeek", "Month"
             );
             FileClose(handle);
          }
@@ -106,7 +120,8 @@ public:
    }
 
    // Captura los datos iniciales cuando se abre una operación
-   void OnTradeOpen(ENUM_ORDER_TYPE tipo, double price, double sl, double tp, double r_top, double r_bottom, ENUM_TIMEFRAMES tf, double breakout_vol, double range_size, double dist_breakout)
+   void OnTradeOpen(ENUM_ORDER_TYPE tipo, double price, double sl, double tp, double r_top, double r_bottom, ENUM_TIMEFRAMES tf, double breakout_vol, double range_size, double dist_breakout, 
+                 double d_vwap, double d_lon_h, double d_lon_l, double d_yes_h, double d_yes_l, int consec)
    {
       CTradeData *new_trade = new CTradeData();
       new_trade.time_open = TimeCurrent();
@@ -146,6 +161,13 @@ public:
 
       // Datos de Volumen
       new_trade.breakout_volume = breakout_vol;
+      
+      new_trade.dist_vwap = d_vwap;
+      new_trade.dist_london_h = d_lon_h;
+      new_trade.dist_london_l = d_lon_l;
+      new_trade.dist_yesterday_h = d_yes_h;
+      new_trade.dist_yesterday_l = d_yes_l;
+      new_trade.consecutive_candles = consec;
       
       m_active_trades.Add(new_trade);
    }
@@ -287,6 +309,12 @@ private:
             DoubleToString(trade_data.atr_val, _Digits),
             DoubleToString(trade_data.yesterday_range, _Digits),
             DoubleToString(trade_data.dist_breakout, _Digits),
+            DoubleToString(trade_data.dist_vwap, 1),
+            DoubleToString(trade_data.dist_london_h, 1),
+            DoubleToString(trade_data.dist_london_l, 1),
+            DoubleToString(trade_data.dist_yesterday_h, 1),
+            DoubleToString(trade_data.dist_yesterday_l, 1),
+            IntegerToString(trade_data.consecutive_candles),
             GetDayName(dt.day_of_week),
             GetMonthName(dt.mon)
          );

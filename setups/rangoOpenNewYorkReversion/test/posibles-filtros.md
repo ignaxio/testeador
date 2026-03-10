@@ -1,4 +1,4 @@
-# New York Reversion Strategy – Filter Testing Plan
+﻿# New York Reversion Strategy – Filter Testing Plan
 
 This document lists potential **filters to test** for improving a New York session mean‑reversion strategy. The goal is to test each filter independently and in combination to determine which ones improve:
 
@@ -55,9 +55,12 @@ Metrics to record:
 | Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
-| **VWAP > 0.5 ATR** | | | | | | |
-| **VWAP > 0.75 ATR** | | | | | | |
-| **VWAP > 1.0 ATR** | | | | | | |
+| **VWAP > 0.5 ATR** | 77 | 23.38% | 0.90 | -0.08 | - | Empeora todo |
+| **VWAP > 0.75 ATR** | 27 | 33.33% | 1.50 | 0.33 | - | Mejora PF y Exp |
+| **VWAP > 1.0 ATR** | 10 | 30.00% | 1.29 | 0.20 | - | Muy restrictivo |
+| **VWAP Overextended (RSQ > 0)** | 146 | 36.30% | 1.62 | 0.41 | - | **GANADOR**: Elimina trades "contra-VWAP" |
+
+> **Nota de Análisis**: El filtro RSQ > 0 (entrar corto solo si precio > VWAP, largo si precio < VWAP) mejora drásticamente la esperanza matemática (de 0.25 a 0.41) manteniendo una buena cantidad de trades.
 
 ---
 
@@ -88,9 +91,8 @@ Large portion of NY reversions occur after **false London breakouts**.
 | Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
-| **London Break > 0.1 ATR** | | | | | | |
-| **London Break > 0.25 ATR** | | | | | | |
-| **London Break > 0.5 ATR** | | | | | | |
+| **Dentro de Rango Londres** | 287 | 32.40% | 1.38 | 0.26 | - | Estable |
+| **Fuera de Rango Londres** | 6 | 0.00% | 0.00 | -1.00 | - | **EVITAR**: Ruptura de Londres implica tendencia |
 
 ---
 
@@ -115,8 +117,8 @@ Markets often reverse after **extended moves beyond previous day's range**.
 | Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
-| **Price > Yesterday + 0.25 ATR** | | | | | | |
-| **Price > Yesterday + 0.5 ATR** | | | | | | |
+| **Dentro de Rango Ayer** | 197 | 31.98% | 1.33 | 0.24 | - | Sin impacto claro |
+| **Fuera de Rango Ayer** | 96 | 32.29% | 1.37 | 0.27 | - | Sin impacto claro |
 
 ---
 
@@ -256,8 +258,8 @@ This filter attempts to capture:
 | Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
-| **4 Velas Seguidas** | | | | | | |
-| **5 Velas Seguidas** | | | | | | |
+| **1-2 Velas Seguidas** | 146 | 36.30% | 1.62 | 0.41 | - | **MEJOR**: Reversión inmediata |
+| **4+ Velas Seguidas** | 82 | 24.39% | 0.85 | -0.15 | - | **EVITAR**: Momentum fuerte |
 
 ---
 
@@ -390,3 +392,4 @@ Stable equity curve
 ```
 
 These filters can then be integrated into the **final NY reversion trading robot**.
+
