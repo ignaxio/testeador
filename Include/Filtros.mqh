@@ -102,3 +102,36 @@ bool ValidarTendenciaSMA200(bool activar, ENUM_ORDER_TYPE tipo_orden)
 
    return true;
 }
+
+bool ValidarFiltroVWAP(bool activar, ENUM_ORDER_TYPE tipo_orden, double vwap, double atr, double multiplicador)
+{
+   if(!activar) return true;
+   
+   if(vwap <= 0 || atr <= 0) return true; // Si hay error en los datos, no filtramos por seguridad
+   
+   double precio = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double distancia = 0;
+   
+   if(tipo_orden == ORDER_TYPE_BUY)
+   {
+      // Para un BUY (reversión de una ruptura bajista), el precio debe estar POR DEBAJO del VWAP
+      distancia = vwap - precio;
+      if(distancia < atr * multiplicador)
+      {
+         Print("Entrada BUY cancelada por filtro VWAP. Distancia: ", DoubleToString(distancia, 1), " < Requerido: ", DoubleToString(atr * multiplicador, 1));
+         return false;
+      }
+   }
+   else if(tipo_orden == ORDER_TYPE_SELL)
+   {
+      // Para un SELL (reversión de una ruptura alcista), el precio debe estar POR ENCIMA del VWAP
+      distancia = precio - vwap;
+      if(distancia < atr * multiplicador)
+      {
+         Print("Entrada SELL cancelada por filtro VWAP. Distancia: ", DoubleToString(distancia, 1), " < Requerido: ", DoubleToString(atr * multiplicador, 1));
+         return false;
+      }
+   }
+   
+   return true;
+}

@@ -50,6 +50,8 @@ bool            usar_filtro_distancia_ruptura;
 double          distancia_ruptura_maxima;
 bool            usar_filtro_exclusion_rango;
 bool            usar_filtro_sma200;
+bool            usar_filtro_vwap;
+double          vwap_multiplicador_atr;
 bool            permitir_lunes;
 bool            permitir_martes;
 bool            permitir_miercoles;
@@ -369,6 +371,7 @@ void EvaluarEntrada()
    if(!ValidarDistanciaRuptura(usar_filtro_distancia_ruptura, dist_breakout, distancia_ruptura_maxima)) return;
    if(!ValidarExclusionRango(usar_filtro_exclusion_rango, range_in_points)) return;
    if(!ValidarTendenciaSMA200(usar_filtro_sma200, tipo_orden)) return;
+   if(!ValidarFiltroVWAP(usar_filtro_vwap, tipo_orden, GetDailyVWAP(), GetDailyATR(), vwap_multiplicador_atr)) return;
 
    // Validación de días de la semana
    MqlDateTime dt_hoy;
@@ -519,4 +522,49 @@ bool PositionSelectByMagic(long magic)
          return true;
    }
    return false;
+}
+
+//+------------------------------------------------------------------+
+//| Funciones de cálculo para indicadores                            |
+//+------------------------------------------------------------------+
+
+double GetDailyVWAP()
+{
+   MqlDateTime dt;
+   datetime now = TimeCurrent();
+   TimeToStruct(now, dt);
+   dt.hour = 0; dt.min = 0; dt.sec = 0;
+   datetime start_of_day = StructToTime(dt);
+   
+   MqlRates rates[];
+   ArraySetAsSeries(rates, true);
+   int copied = CopyRates(_Symbol, _Period, start_of_day, now, rates);
+   
+   if(copied <= 0) return 0;
+   
+   double sum_pv = 0;
+   double sum_v = 0;
+   
+   for(int i=0; i<copied; i++)
+   {
+      double typical = (rates[i].high + rates[i].low + rates[i].close) / 3.0;
+      sum_pv += (typical * (double)rates[i].tick_volume);
+      sum_v += (double)rates[i].tick_volume;
+   }
+   
+   return (sum_v > 0) ? (sum_pv / sum_v) : 0;
+}
+
+double GetDailyATR(int period = 14)
+{
+   int handle = iATR(_Symbol, PERIOD_D1, period);
+   if(handle == INVALID_HANDLE) return 0;
+   
+   double buffer[];
+   ArraySetAsSeries(buffer, true);
+   int copied = CopyBuffer(handle, 0, 0, 1, buffer);
+   IndicatorRelease(handle);
+   
+   if(copied <= 0) return 0;
+   return buffer[0];
 }

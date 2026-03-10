@@ -10,7 +10,10 @@
 
 #include "..\..\..\Include\RupturaEngine.mqh"
 
-// NO HAY INPUTS AQUÍ - Parámetros fijos para uso profesional optimizado
+// --- INPUTS PARA OPTIMIZACIÓN (Temporales para pruebas) ---
+input group "=== Filtros de Testeo ==="
+input bool   inp_usar_vwap      = false; // Test: Filtro VWAP
+input double inp_vwap_atr_mult  = 0.5;   // Mult. ATR para VWAP
 
 //+------------------------------------------------------------------+
 //| Expert initialization                                            |
@@ -55,6 +58,10 @@ int OnInit()
    opening_range_size            = 2000;
    usar_filtro_distancia_ruptura  = false;
    distancia_ruptura_maxima      = 10.0;
+   
+   // --- Filtros de Testeo (VWAP) ---
+   usar_filtro_vwap     = inp_usar_vwap;
+   vwap_multiplicador_atr = inp_vwap_atr_mult;
    
    // --- Configuración del Sistema ---
    MagicNumber       = 12345;
