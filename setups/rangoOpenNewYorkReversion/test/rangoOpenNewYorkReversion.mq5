@@ -12,8 +12,9 @@
 
 // --- INPUTS PARA OPTIMIZACIÓN (Temporales para pruebas) ---
 input group "=== Filtros de Testeo ==="
-input bool   inp_usar_vwap      = false; // Test: Filtro VWAP
-input double inp_vwap_atr_mult  = 0.5;   // Mult. ATR para VWAP
+input bool   inp_usar_vwap      = true;  // Test: Filtro VWAP
+input double inp_vwap_atr_mult  = 0.0;   // Mult. ATR para VWAP (0.0 = RSQ > 0)
+input bool   inp_usar_londres   = false; // Test: Filtro Londres
 
 //+------------------------------------------------------------------+
 //| Expert initialization                                            |
@@ -59,9 +60,10 @@ int OnInit()
    usar_filtro_distancia_ruptura  = false;
    distancia_ruptura_maxima      = 10.0;
    
-   // --- Filtros de Testeo (VWAP) ---
+   // --- Filtros de Testeo (VWAP y Londres) ---
    usar_filtro_vwap     = inp_usar_vwap;
    vwap_multiplicador_atr = inp_vwap_atr_mult;
+   usar_filtro_londres  = inp_usar_londres;
    
    // --- Configuración del Sistema ---
    MagicNumber       = 12345;

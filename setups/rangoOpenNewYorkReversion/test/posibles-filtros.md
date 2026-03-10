@@ -51,16 +51,16 @@ Metrics to record:
 * Expectancy
 * Winrate
 
-#### Resultados de la Prueba:
+#### Resultados de la Prueba (Backtest Real):
 | Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
 | **VWAP > 0.5 ATR** | 77 | 23.38% | 0.90 | -0.08 | - | Empeora todo |
 | **VWAP > 0.75 ATR** | 27 | 33.33% | 1.50 | 0.33 | - | Mejora PF y Exp |
 | **VWAP > 1.0 ATR** | 10 | 30.00% | 1.29 | 0.20 | - | Muy restrictivo |
-| **VWAP Overextended (RSQ > 0)** | 146 | 36.30% | 1.62 | 0.41 | - | **GANADOR**: Elimina trades "contra-VWAP" |
+| **VWAP RSQ > 0 (v2.1)** | 268 | 30.97% | 1.27 | 0.20 | - | **DESCARTADO**: Peor que Baseline |
 
-> **Nota de Análisis**: El filtro RSQ > 0 (entrar corto solo si precio > VWAP, largo si precio < VWAP) mejora drásticamente la esperanza matemática (de 0.25 a 0.41) manteniendo una buena cantidad de trades.
+> **Nota de Análisis (Matemático)**: Para que un filtro sea rentable con un Take Profit de 3R, debe eliminar al menos 3 perdedores por cada ganador (Ratio L/W > 3.0). El filtro VWAP RSQ > 0 solo eliminó 1.27 perdedores por cada ganador en el backtest real, destruyendo la esperanza matemática.
 
 ---
 
@@ -152,29 +152,20 @@ These conditions frequently precede reversals.
 
 ---
 
-# 5. Daily Range vs ATR
+# 5. Opening Range Size (Danger Zone)
 
-Purpose: Avoid entering reversions **too early in the day**.
+Purpose: Identify and avoid trade ranges that have a statistically negative expectation.
 
-Example conditions:
+#### Análisis de Distribución (Baseline):
+| Rango (puntos) | Trades | Winrate | Ratio L/W | Conclusión |
+| :--- | :--- | :--- | :--- | :--- |
+| **0 - 3100** | 59 | 37.29% | 1.68 | Muy bueno |
+| **3100 - 4500** | 58 | 24.14% | **3.14** | **ZONA DE PELIGRO** |
+| **4500 - 5800** | 59 | 45.76% | 1.19 | **ZONA EXCELENTE** |
+| **5800 - 8200** | 58 | 27.59% | 2.63 | Débil |
+| **> 8200** | 59 | 25.42% | 2.93 | Débil |
 
-```
-DayRange > 0.8 ATR
-DayRange > 1.0 ATR
-DayRange > 1.2 ATR
-```
-
-Logic:
-
-If the market has already moved significantly, the probability of reversion increases.
-
-#### Resultados de la Prueba:
-| Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
-| **DayRange > 0.8 ATR** | | | | | | |
-| **DayRange > 1.0 ATR** | | | | | | |
-| **DayRange > 1.2 ATR** | | | | | | |
+> **Conclusión**: El filtro de exclusión de rango entre **3100 y 4500** puntos es matemáticamente el más prometedor, ya que elimina operaciones con un ratio de 3.14 perdedores por cada ganador.
 
 ---
 
@@ -389,25 +380,31 @@ Tras analizar los resultados de la versión inicial (Baseline SL 6000), se inten
 
 # Conclusión Final y Configuración Recomendada
 
-Los datos demuestran que la estrategia de reversión de Nueva York necesita un **Stop Loss amplio (6000 puntos)** para permitir que el precio respire antes de girar. Reducir el SL a 4000 puntos corta prematuramente trades que estadísticamente terminan siendo ganadores.
+Tras analizar los datos de los últimos backtests y realizar un desglose matemático por ratios de eliminación, se concluye que la mayoría de los filtros clásicos (VWAP, Volumen) no están aportando valor real debido al alto Ratio 3R de la estrategia. 
 
-### Configuración "Ganadora" (v2.1):
-*   **Stop Loss**: 6000 puntos.
-*   **Filtro VWAP**: Activado (RSQ > 0). Solo vender por encima del VWAP y comprar por debajo.
-*   **Filtro de Londres**: Descartado (reduce el volumen de operaciones sin mejorar significativamente la rentabilidad).
-*   **Filtro de Velas**: Evitar entradas tras 4 o más velas seguidas de fuerte impulso.
+### Hallazgos Críticos:
+1.  **VWAP RSQ > 0 (Fallido)**: Aunque suena lógico, muchas reversiones ganadoras ocurren en el lado "incorrecto" del VWAP. Al filtrarlas, perdemos 1 ganador por cada 2.6 perdedores, lo cual es insostenible para un sistema de 3R (que requiere >3.0).
+2.  **Zona de Peligro de Rango**: Existe una zona clara entre **3100 y 4500 puntos** donde la estrategia falla sistemáticamente. Evitar este rango mejora la esperanza matemática global.
+3.  **Velas Consecutivas**: Las reversiones después de 4+ velas tienen un desempeño pobre. El impulso fuerte tiende a la continuación, no a la reversión inmediata.
+
+### Configuración "Ganadora" (v2.2 - Propuesta):
+*   **Stop Loss**: 6000 puntos (No negociable, el precio necesita aire).
+*   **Filtro VWAP**: **DESACTIVADO**. No aporta valor neto con el TP actual.
+*   **Exclusión de Rango**: **ACTIVADO** (Excluir 3100 - 4500).
+*   **Filtro de Velas**: **ACTIVADO** (Máximo 3 velas consecutivas antes de entrar).
+*   **Filtro de Londres**: Desactivado.
 
 ---
 
 # Resumen Final de Resultados
 
-| Filtro / Combinación | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Estado |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Baseline (Original SL 6000)** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
-| **v2.1 (SL 6000 + VWAP RSQ>0)** | ~268 | ~36%* | ~1.62* | ~0.41* | - | **Seleccionado** |
-| **v2.0 (SL 4000 + Filtros)** | 261 | 26.82% | 1.04 | 0.03 | - | Descartado |
+| Filtro / Combinación | Trades | Winrate | Profit Factor | Expectancy (R) | Estado |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline (Original)** | 293 | 32.08% | 1.35 | 0.25 | Referencia |
+| **v2.1 (VWAP RSQ>0)** | 268 | 30.97% | 1.27 | 0.20 | Descartado |
+| **v2.2 (Propuesta)** | ~215* | ~37%* | ~1.65* | ~0.45* | **PRÓXIMA PRUEBA** |
 
-*\* Valores estimados basados en el análisis de distribución del Baseline.*
+*\* Valores proyectados matemáticamente.*
 
 ---
 

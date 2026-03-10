@@ -52,6 +52,7 @@ bool            usar_filtro_exclusion_rango;
 bool            usar_filtro_sma200;
 bool            usar_filtro_vwap;
 double          vwap_multiplicador_atr;
+bool            usar_filtro_londres;
 bool            permitir_lunes;
 bool            permitir_martes;
 bool            permitir_miercoles;
@@ -376,6 +377,11 @@ void EvaluarEntrada()
    if(!ValidarDistanciaRuptura(usar_filtro_distancia_ruptura, dist_breakout, distancia_ruptura_maxima)) return;
    if(!ValidarExclusionRango(usar_filtro_exclusion_rango, range_in_points)) return;
    if(!ValidarTendenciaSMA200(usar_filtro_sma200, tipo_orden)) return;
+   
+   double lonH_val, lonL_val;
+   GetLondonHighLow(lonH_val, lonL_val);
+   if(!ValidarFiltroLondres(usar_filtro_londres, tipo_orden, lonH_val, lonL_val)) return;
+   
    if(!ValidarFiltroVWAP(usar_filtro_vwap, tipo_orden, GetDailyVWAP(), GetDailyATR(), vwap_multiplicador_atr)) return;
 
    // Validación de días de la semana

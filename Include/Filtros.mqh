@@ -135,3 +135,32 @@ bool ValidarFiltroVWAP(bool activar, ENUM_ORDER_TYPE tipo_orden, double vwap, do
    
    return true;
 }
+
+bool ValidarFiltroLondres(bool activar, ENUM_ORDER_TYPE tipo_orden, double lonH, double lonL)
+{
+   if(!activar) return true;
+   if(lonH <= 0 || lonL <= 0) return true; // Si no hay datos, no filtramos
+
+   double precio = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+
+   if(tipo_orden == ORDER_TYPE_BUY)
+   {
+      // Para un BUY (reversión de una ruptura bajista), el precio debe estar POR ENCIMA del mínimo de Londres
+      if(precio < lonL)
+      {
+         Print("Entrada BUY cancelada por filtro Londres. Precio: ", precio, " < Mínimo Londres: ", lonL);
+         return false;
+      }
+   }
+   else if(tipo_orden == ORDER_TYPE_SELL)
+   {
+      // Para un SELL (reversión de una ruptura alcista), el precio debe estar POR DEBAJO del máximo de Londres
+      if(precio > lonH)
+      {
+         Print("Entrada SELL cancelada por filtro Londres. Precio: ", precio, " > Máximo Londres: ", lonH);
+         return false;
+      }
+   }
+
+   return true;
+}
