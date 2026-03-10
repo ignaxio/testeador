@@ -1,1 +1,0 @@
-3.  **Optimización del SL Dinámico:** En tu archivo `rangoOpenNewYorkReversionv2.mq5`, mencionas un "ratio dinámico por día". Podrías programar que el robot analice el rango promedio de los últimos 5 días (ATR) para ajustar los `puntos_sl` automáticamente en lugar de usar un valor fijo de 5000 o 6000 puntos.
