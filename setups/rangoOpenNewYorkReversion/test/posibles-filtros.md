@@ -11,17 +11,20 @@ The process should be **systematic**: test one filter at a time, then combinatio
 
 ---
 
-# Baseline Strategy
+# Baseline Strategy (test-newyork.csv)
 
-Before testing filters, define a **baseline version** of the strategy.
+The baseline version of the strategy is defined as:
 
-Example:
+* **Entry**: New York Session Reversion (Ruptura 09:15-09:30, Operativa 09:31-11:00)
+* **Stop Loss**: 1R (Fixed 6000 points)
+* **Take Profit**: 3R (Ratio 3.0)
+* **Symbols/Period**: M2 TF
 
-* Entry: NY session reversion setup
-* Stop loss: 1R
-* Take profit: 3R
+### Baseline Results:
 
-All filters should be tested **relative to this baseline**.
+| Configuration | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusion |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Reference |
 
 ---
 
@@ -48,6 +51,14 @@ Metrics to record:
 * Expectancy
 * Winrate
 
+#### Resultados de la Prueba:
+| Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
+| **VWAP > 0.5 ATR** | | | | | | |
+| **VWAP > 0.75 ATR** | | | | | | |
+| **VWAP > 1.0 ATR** | | | | | | |
+
 ---
 
 # 2. London Range Break Filter
@@ -73,6 +84,14 @@ Hypothesis:
 
 Large portion of NY reversions occur after **false London breakouts**.
 
+#### Resultados de la Prueba:
+| Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
+| **London Break > 0.1 ATR** | | | | | | |
+| **London Break > 0.25 ATR** | | | | | | |
+| **London Break > 0.5 ATR** | | | | | | |
+
 ---
 
 # 3. Yesterday High/Low Extension
@@ -91,6 +110,13 @@ Price < YesterdayLow - 0.5 ATR
 Hypothesis:
 
 Markets often reverse after **extended moves beyond previous day's range**.
+
+#### Resultados de la Prueba:
+| Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
+| **Price > Yesterday + 0.25 ATR** | | | | | | |
+| **Price > Yesterday + 0.5 ATR** | | | | | | |
 
 ---
 
@@ -115,6 +141,13 @@ Volume spikes often indicate:
 
 These conditions frequently precede reversals.
 
+#### Resultados de la Prueba:
+| Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
+| **Volume > 1.5x Avg** | | | | | | |
+| **Volume > 2.0x Avg** | | | | | | |
+
 ---
 
 # 5. Daily Range vs ATR
@@ -132,6 +165,14 @@ DayRange > 1.2 ATR
 Logic:
 
 If the market has already moved significantly, the probability of reversion increases.
+
+#### Resultados de la Prueba:
+| Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
+| **DayRange > 0.8 ATR** | | | | | | |
+| **DayRange > 1.0 ATR** | | | | | | |
+| **DayRange > 1.2 ATR** | | | | | | |
 
 ---
 
@@ -151,6 +192,14 @@ This filter helps avoid:
 
 * Early noise
 * Small oscillations near the open
+
+#### Resultados de la Prueba:
+| Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
+| **DistOpen > 0.5 ATR** | | | | | | |
+| **DistOpen > 0.75 ATR** | | | | | | |
+| **DistOpen > 1.0 ATR** | | | | | | |
 
 ---
 
@@ -177,6 +226,13 @@ Hypothesis:
 
 Reversion trades perform better **against short‑term moves but within larger trend context**.
 
+#### Resultados de la Prueba:
+| Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
+| **Trend SMA200** | | | | | | |
+| **Trend EMA200** | | | | | | |
+
 ---
 
 # 8. Consecutive Candles Filter
@@ -195,6 +251,13 @@ This filter attempts to capture:
 
 * Momentum exhaustion
 * Overextended impulse moves
+
+#### Resultados de la Prueba:
+| Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
+| **4 Velas Seguidas** | | | | | | |
+| **5 Velas Seguidas** | | | | | | |
 
 ---
 
@@ -216,6 +279,13 @@ Track performance differences in:
 * Expectancy
 * Drawdown
 * Profit factor
+
+#### Resultados de la Prueba:
+| Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
+| **Solo Tue–Fri** | | | | | | |
+| **Solo Tue + Fri** | | | | | | |
 
 ---
 
@@ -240,6 +310,12 @@ TP = 3R or 4R
 ```
 
 This setup should have **lower frequency but higher expectancy**.
+
+#### Resultados de la Prueba:
+| Configuración | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Conclusión |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
+| **Extreme Setup** | | | | | | |
 
 ---
 
@@ -285,6 +361,15 @@ Example table structure:
 
 | Filter | Trades | Winrate | Expectancy | PF | DD |
 | ------ | ------ | ------- | ---------- | -- | -- |
+
+---
+
+# Resumen Final de Resultados
+
+| Filtro / Combinación | Trades | Winrate | Profit Factor | Expectancy (R) | Max DD | Estado |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline (test-newyork.csv)** | 293 | 32.08% | 1.35 | 0.25 | - | Referencia |
+| | | | | | | |
 
 ---
 
