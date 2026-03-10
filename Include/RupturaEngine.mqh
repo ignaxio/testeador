@@ -53,6 +53,8 @@ bool            usar_filtro_sma200;
 bool            usar_filtro_vwap;
 double          vwap_multiplicador_atr;
 bool            usar_filtro_londres;
+bool            usar_filtro_velas_consecutivas;
+int             max_velas_consecutivas;
 bool            permitir_lunes;
 bool            permitir_martes;
 bool            permitir_miercoles;
@@ -383,6 +385,9 @@ void EvaluarEntrada()
    if(!ValidarFiltroLondres(usar_filtro_londres, tipo_orden, lonH_val, lonL_val)) return;
    
    if(!ValidarFiltroVWAP(usar_filtro_vwap, tipo_orden, GetDailyVWAP(), GetDailyATR(), vwap_multiplicador_atr)) return;
+
+   int current_consec = GetConsecutiveCandles();
+   if(!ValidarVelasConsecutivas(usar_filtro_velas_consecutivas, current_consec, max_velas_consecutivas)) return;
 
    // Validación de días de la semana
    MqlDateTime dt_hoy;

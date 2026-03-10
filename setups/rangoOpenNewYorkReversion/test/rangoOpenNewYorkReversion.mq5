@@ -10,11 +10,11 @@
 
 #include "..\..\..\Include\RupturaEngine.mqh"
 
-// --- INPUTS PARA OPTIMIZACIÓN (Temporales para pruebas) ---
-input group "=== Filtros de Testeo ==="
-input bool   inp_usar_vwap      = true;  // Test: Filtro VWAP
-input double inp_vwap_atr_mult  = 0.0;   // Mult. ATR para VWAP (0.0 = RSQ > 0)
-input bool   inp_usar_londres   = false; // Test: Filtro Londres
+// --- INPUTS PARA OPTIMIZACIÓN (Configuración v2.2) ---
+input group "=== Filtros de Testeo (v2.2) ==="
+input bool   inp_usar_exclusion_rango = true;  // Exclusión Rango (3100-4500)
+input bool   inp_usar_filtro_velas    = true;  // Filtro Velas Consecutivas
+input int    inp_max_velas_consec     = 3;     // Máximo velas permitidas
 
 //+------------------------------------------------------------------+
 //| Expert initialization                                            |
@@ -52,7 +52,7 @@ int OnInit()
    ratio_activacion_be = 2.0;
    porcentaje_sl_nuevo = 50.0;
    
-   // --- Filtros de Entrada ---
+   // --- Filtros de Entrada (v2.2) ---
    usar_filtro_volumen           = false;
    volumen_limite                = 1000;
    usar_filtro_opening_range_size = false;
@@ -60,14 +60,18 @@ int OnInit()
    usar_filtro_distancia_ruptura  = false;
    distancia_ruptura_maxima      = 10.0;
    
-   // --- Filtros de Testeo (VWAP y Londres) ---
-   usar_filtro_vwap     = inp_usar_vwap;
-   vwap_multiplicador_atr = inp_vwap_atr_mult;
-   usar_filtro_londres  = inp_usar_londres;
+   // --- Aplicar Configuración v2.2 ---
+   usar_filtro_exclusion_rango   = inp_usar_exclusion_rango;
+   usar_filtro_velas_consecutivas = inp_usar_filtro_velas;
+   max_velas_consecutivas         = inp_max_velas_consec;
+   
+   usar_filtro_vwap     = false;
+   vwap_multiplicador_atr = 0.0;
+   usar_filtro_londres  = false;
    
    // --- Configuración del Sistema ---
    MagicNumber       = 12345;
-   nombre_estrategia = "test-newyork";
+   nombre_estrategia = "test-newyork-v2.2";
 
    return EngineOnInit();
 }

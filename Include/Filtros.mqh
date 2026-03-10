@@ -48,10 +48,21 @@ bool ValidarExclusionRango(bool activar, double range_size)
 {
    if(!activar) return true;
 
-   // Si el tamaño está entre 3300 y 4700, NO OPERAR
-   if(range_size > 3300.0 && range_size < 4700.0)
+   // Si el tamaño está entre 3100 y 4500, NO OPERAR
+   if(range_size > 3100.0 && range_size < 4500.0)
    {
-      Print("Operación cancelada: Opening Range Size (", range_size, ") está en zona de exclusión (3300-4700)");
+      Print("Operación cancelada: Opening Range Size (", range_size, ") está en zona de exclusión (3100-4500)");
+      return false;
+   }
+   return true;
+}
+
+bool ValidarVelasConsecutivas(bool activar, int current_consec, int max_consec)
+{
+   if(!activar) return true;
+   if(current_consec > max_consec)
+   {
+      Print("Entrada cancelada por velas consecutivas. Actual: ", current_consec, " > Máximo: ", max_consec);
       return false;
    }
    return true;
