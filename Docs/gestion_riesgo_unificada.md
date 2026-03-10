@@ -11,10 +11,10 @@ Este documento detalla el plan para unificar los robots de producción en un sol
 *   **Control de Riesgo Global**: El EA conoce el beneficio/pérdida total del día sumando todas las estrategias, permitiendo detener la operativa si se alcanza el `Daily Max Loss`.
 *   **Optimización de Margen**: Mejor gestión de la equidad disponible al no tener múltiples EAs compitiendo de forma independiente.
 
-### 1.2 Estrategias a Unificar
-1.  **Rango 10 Continuación (Londres)**
-2.  **NY Reversion (Nueva York)**
-3.  **Variante NY Reversion Fridays**
+### 1.2 Estrategias a Unificar (Instancias)
+1.  **engineLnd**: Rango 10 Continuación (Londres).
+2.  **engineNY**: NY Reversion (Nueva York - Lunes a Jueves).
+3.  **engineNYFridays**: NY Reversion (Nueva York - Viernes).
 
 ---
 
@@ -46,15 +46,15 @@ El riesgo por operación ya no será estático (ej. 0.5% fijo), sino que se ajus
 
 ---
 
-## 4. Clasificación de Estrategias por Puntuación (Scoring)
+## 4. Clasificación de Estrategias por Grupo (Riesgo Configurable)
 
-Dividiremos los trades en 3 grupos de probabilidad basados en los filtros analizados y validados estadísticamente. Cada grupo tendrá un multiplicador de riesgo:
+El EA permite configurar el porcentaje de riesgo base para cada grupo de estrategia, permitiendo que el usuario decida cuánto capital asignar a cada ventaja estadística:
 
-| Grupo | Calificación | Criterios (Simplificados v3.0) | Riesgo Sugerido |
+| Grupo | Descripción | Instancia Asociada | Riesgo Configurable (Input) |
 | :--- | :--- | :--- | :--- |
-| **Grupo A** | Alta Probabilidad | **NY Reversión**: Operativa en **Viernes** | **100% del riesgo base** |
-| **Grupo B** | Media Probabilidad | **Londres Continuación**: Todos los días | **70% del riesgo base** |
-| **Grupo C** | Baja Probabilidad | **NY Reversión**: Resto de días (Lunes a Jueves) | **40% del riesgo base** |
+| **Grupo A** | NY Reversión (Viernes) | `engineNYFridays` | `InpRiskGroupA` (ej. 0.5%) |
+| **Grupo B** | Londres Continuación (Todos los días) | `engineLnd` | `InpRiskGroupB` (ej. 0.35%) |
+| **Grupo C** | NY Reversión (Lunes a Jueves) | `engineNY` | `InpRiskGroupC` (ej. 0.2%) |
 
 ---
 

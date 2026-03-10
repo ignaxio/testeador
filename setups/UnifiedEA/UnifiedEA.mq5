@@ -8,8 +8,8 @@
 #property version   "3.0"
 #property strict
 
-#include "..\Include\RupturaEngine.mqh"
-#include "..\Include\GestionRiesgo.mqh"
+#include "..\..\Include\RupturaEngine.mqh"
+#include "..\..\Include\GestionRiesgo.mqh"
 
 // --- INPUTS DE GESTIÓN DE RIESGO (FONDEO) ---
 input group "=== Configuración Cuenta Fondeo ==="
@@ -21,12 +21,18 @@ input bool   InpHardStop         = true;     // Detener EA si se tocan límites
 
 input group "=== Estrategias Activas ==="
 input bool   InpLndEnable        = true;     // Activar Londres Continuación
-input bool   InpNYEnable         = true;     // Activar NY Reversión
-input double InpRiskBase         = 0.5;      // % Riesgo Base por Trade
+input bool   InpNYEnable         = true;     // Activar NY Reversión (Lunes-Jueves)
+input bool   InpNYFridaysEnable  = true;     // Activar NY Reversión (Viernes)
+
+input group "=== Riesgo por Grupo de Estrategia ==="
+input double InpRiskGroupA         = 0.5;      // % Riesgo Grupo A (NY Viernes)
+input double InpRiskGroupB         = 0.35;     // % Riesgo Grupo B (Londres)
+input double InpRiskGroupC         = 0.2;      // % Riesgo Grupo C (NY Lunes-Jueves)
 
 // --- OBJETOS GLOBALES ---
 CRupturaEngine       engineLnd;
 CRupturaEngine       engineNY;
+CRupturaEngine       engineNYFridays;
 CGestionRiesgoUnified riskControl;
 
 // --- VARIABLES DE ESTADO ---
@@ -58,7 +64,7 @@ int OnInit()
    riskControl.Configure(initial_b, InpTargetProfit, InpDailyMaxLoss, InpTotalMaxLoss, InpHardStop);
    riskControl.PrintStatus();
 
-   // 2. Configurar Estrategia LONDRES (Continuación)
+   // 2. Configurar Estrategia LONDRES (Continuación) - GRUPO B
    if(InpLndEnable)
    {
       engineLnd.nombre_estrategia = "Lnd_Continuacion";
@@ -74,21 +80,20 @@ int OnInit()
       engineLnd.direccion         = Continuacion;
       engineLnd.puntos_sl         = 10000;
       engineLnd.ratio             = 3.0;
-      engineLnd.porcentaje_riesgo = InpRiskBase;
-      engineLnd.usar_filtro_opening_range_size = true;
-      engineLnd.opening_range_size = 2500;
+      engineLnd.porcentaje_riesgo = InpRiskGroupB;
+      engineLnd.usar_filtro_opening_range_size = false;
+      engineLnd.opening_range_size = 2000;
       engineLnd.usar_filtro_exclusion_rango = true;
-      engineLnd.usar_filtro_sma200 = true;
-      engineLnd.permitir_viernes   = false;
-      engineLnd.usar_scoring      = true;
+      engineLnd.usar_filtro_sma200 = false;
+      engineLnd.usar_scoring      = false; // Riesgo asignado directamente por Grupo B
       
       if(engineLnd.Init() != INIT_SUCCEEDED) return INIT_FAILED;
    }
 
-   // 3. Configurar Estrategia NUEVA YORK (Reversión)
+   // 3. Configurar Estrategia NUEVA YORK SEMANA (Reversión) - GRUPO C
    if(InpNYEnable)
    {
-      engineNY.nombre_estrategia  = "NY_Reversion";
+      engineNY.nombre_estrategia  = "NY_Semana";
       engineNY.MagicNumber        = 88201;
       engineNY.time_frame         = PERIOD_M2;
       engineNY.modo_horario       = MODO_MERCADO;
@@ -102,12 +107,43 @@ int OnInit()
       engineNY.direccion          = Reversion;
       engineNY.puntos_sl          = 6000;
       engineNY.ratio              = 3.0;
-      engineNY.porcentaje_riesgo  = InpRiskBase;
+      engineNY.porcentaje_riesgo  = InpRiskGroupC;
       engineNY.usar_filtro_vwap   = false;
       engineNY.usar_filtro_exclusion_rango = true;
-      engineNY.usar_scoring        = true;
+      engineNY.permitir_viernes   = false; // Solo de Lunes a Jueves
+      engineNY.usar_scoring       = false; // Riesgo asignado directamente por Grupo C
       
       if(engineNY.Init() != INIT_SUCCEEDED) return INIT_FAILED;
+   }
+
+   // 4. Configurar Estrategia NUEVA YORK VIERNES (Reversión) - GRUPO A
+   if(InpNYFridaysEnable)
+   {
+      engineNYFridays.nombre_estrategia  = "NY_Viernes";
+      engineNYFridays.MagicNumber        = 88202;
+      engineNYFridays.time_frame         = PERIOD_M2;
+      engineNYFridays.modo_horario       = MODO_MERCADO;
+      engineNYFridays.zona_mercado       = ZONE_NEWYORK;
+      engineNYFridays.hora_inicio_rango  = "09:15";
+      engineNYFridays.hora_fin_rango     = "09:30";
+      engineNYFridays.hora_inicio_operativa = "09:31";
+      engineNYFridays.hora_fin_operativa    = "11:00";
+      engineNYFridays.cerramos_trades       = true;
+      engineNYFridays.hora_fin_sesion       = "14:30";
+      engineNYFridays.direccion          = Reversion;
+      engineNYFridays.puntos_sl          = 6000;
+      engineNYFridays.ratio              = 3.0;
+      engineNYFridays.porcentaje_riesgo  = InpRiskGroupA;
+      engineNYFridays.usar_filtro_vwap   = false;
+      engineNYFridays.usar_filtro_exclusion_rango = true;
+      engineNYFridays.permitir_lunes     = false;
+      engineNYFridays.permitir_martes    = false;
+      engineNYFridays.permitir_miercoles = false;
+      engineNYFridays.permitir_jueves    = false;
+      engineNYFridays.permitir_viernes   = true; // Solo Viernes
+      engineNYFridays.usar_scoring       = false; // Riesgo asignado directamente por Grupo A
+      
+      if(engineNYFridays.Init() != INIT_SUCCEEDED) return INIT_FAILED;
    }
 
    return(INIT_SUCCEEDED);
@@ -138,7 +174,7 @@ void OnTick()
    // pero busca nuevas entradas solo al cierre de vela.
    if(InpLndEnable)
    {
-      if(g_can_operate) engineLnd.porcentaje_riesgo = InpRiskBase * g_dynamic_mult;
+      if(g_can_operate) engineLnd.porcentaje_riesgo = InpRiskGroupB * g_dynamic_mult;
       else engineLnd.porcentaje_riesgo = 0; // Bloqueo de entradas
       
       engineLnd.OnTick();
@@ -146,9 +182,17 @@ void OnTick()
    
    if(InpNYEnable)
    {
-      if(g_can_operate) engineNY.porcentaje_riesgo = InpRiskBase * g_dynamic_mult;
+      if(g_can_operate) engineNY.porcentaje_riesgo = InpRiskGroupC * g_dynamic_mult;
       else engineNY.porcentaje_riesgo = 0; // Bloqueo de entradas
       
       engineNY.OnTick();
+   }
+
+   if(InpNYFridaysEnable)
+   {
+      if(g_can_operate) engineNYFridays.porcentaje_riesgo = InpRiskGroupA * g_dynamic_mult;
+      else engineNYFridays.porcentaje_riesgo = 0; // Bloqueo de entradas
+      
+      engineNYFridays.OnTick();
    }
 }
