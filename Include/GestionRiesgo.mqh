@@ -20,6 +20,7 @@ private:
    double   m_max_pérdida_diaria;
    double   m_max_pérdida_total;
    bool     m_hard_stop;
+   bool     m_limit_reached;
 
    double   GetRealizedDailyProfit()
    {
@@ -49,6 +50,7 @@ public:
       m_max_pérdida_diaria = 0;
       m_max_pérdida_total = 0;
       m_hard_stop = true;
+      m_limit_reached = false;
    }
 
    void Configure(double balance, double target_perc, double daily_loss_perc, double total_loss_perc, bool hard_stop)
@@ -58,6 +60,7 @@ public:
       m_max_pérdida_diaria = balance * (daily_loss_perc / 100.0);
       m_max_pérdida_total = balance * (total_loss_perc / 100.0);
       m_hard_stop = hard_stop;
+      m_limit_reached = false;
    }
 
    // --- Lógica de Riesgo Dinámico ---
@@ -93,9 +96,12 @@ public:
       double balance = AccountInfoDouble(ACCOUNT_BALANCE);
       
       // 1. Pérdida Total (Equity vs Balance Inicial)
-      if(m_balance_inicial - equity >= m_max_pérdida_total)
+      if(m_balance_inicial > 0 && m_balance_inicial - equity >= m_max_pérdida_total)
       {
-         if(m_hard_stop) Print("GESTIÓN RIESGO: Límite de pérdida TOTAL alcanzado. (Equity: ", NormalizeDouble(equity, 2), " | Límite: ", NormalizeDouble(m_balance_inicial - m_max_pérdida_total, 2), ")");
+         if(!m_limit_reached && m_hard_stop) {
+            Print("GESTIÓN RIESGO: Límite de pérdida TOTAL alcanzado. (Equity: ", NormalizeDouble(equity, 2), " | Límite: ", NormalizeDouble(m_balance_inicial - m_max_pérdida_total, 2), ")");
+            m_limit_reached = true;
+         }
          return false;
       }
 
@@ -106,17 +112,24 @@ public:
 
       if(total_today <= -m_max_pérdida_diaria)
       {
-         if(m_hard_stop) Print("GESTIÓN RIESGO: Límite de pérdida DIARIA alcanzado. (Pérdida hoy: ", NormalizeDouble(total_today, 2), " | Límite diario: ", NormalizeDouble(-m_max_pérdida_diaria, 2), ")");
+         if(!m_limit_reached && m_hard_stop) {
+            Print("GESTIÓN RIESGO: Límite de pérdida DIARIA alcanzado. (Pérdida hoy: ", NormalizeDouble(total_today, 2), " | Límite diario: ", NormalizeDouble(-m_max_pérdida_diaria, 2), ")");
+            m_limit_reached = true;
+         }
          return false;
       }
 
       // 3. Objetivo alcanzado
-      if(balance - m_balance_inicial >= m_target_profit)
+      if(m_balance_inicial > 0 && balance - m_balance_inicial >= m_target_profit)
       {
-         Print("GESTIÓN RIESGO: Objetivo de beneficio ALCANZADO (", NormalizeDouble(balance - m_balance_inicial, 2), "). Prueba superada.");
+         if(!m_limit_reached) {
+            Print("GESTIÓN RIESGO: Objetivo de beneficio ALCANZADO (", NormalizeDouble(balance - m_balance_inicial, 2), "). Prueba superada.");
+            m_limit_reached = true;
+         }
          return false;
       }
 
+      m_limit_reached = false; // Reset if conditions are fine
       return true;
    }
    

@@ -110,21 +110,15 @@ int OnInit()
 //| Expert tick function                                             |
 //+------------------------------------------------------------------+
 void OnTick()
-{// --- BLOQUE DE DEPURACIÓN ---
-    if(!riskControl.CanOperate())
-    {
-       // Esto nos dirá qué está viendo el robot exactamente
-       riskControl.PrintStatus();
-       return;
-    }
-   // Validar si la cuenta está en condiciones de operar
+{
+   // 1. Validar si la cuenta está en condiciones de operar
    if(!riskControl.CanOperate()) 
       return;
 
-   // Obtener multiplicador de riesgo dinámico (Safety / Finish)
+   // 2. Obtener multiplicador de riesgo dinámico (Safety / Finish)
    double dynamicMult = riskControl.GetDynamicRiskMultiplier();
 
-   // Ejecutar motores
+   // 3. Ejecutar motores
    if(InpLndEnable)
    {
       engineLnd.porcentaje_riesgo = InpRiskBase * dynamicMult;
