@@ -47,9 +47,9 @@ int OnInit()
    engine.opening_range_size            = 6000;
    engine.opening_range_size_max        = true;
 
-   engine.usar_filtro_atr               = false;
-   engine.atr_limit                     = 22000;
-   engine.atr_limit_max                 = true;
+   engine.usar_filtro_atr               = true;
+   engine.atr_limit                     = 18;
+   engine.atr_limit_max                 = false;
 
    // --- Filtro de Días ---
    engine.permitir_viernes   = false;
