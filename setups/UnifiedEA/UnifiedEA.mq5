@@ -83,6 +83,7 @@ int OnInit()
       engineLnd.porcentaje_riesgo = InpRiskGroupB;
       engineLnd.usar_filtro_opening_range_size = true;
       engineLnd.opening_range_size = 2000;
+      engineLnd.opening_range_size_max = false;
       engineLnd.usar_filtro_exclusion_rango = true;
       engineLnd.usar_scoring      = false; // Riesgo asignado directamente por Grupo B
       
@@ -101,13 +102,15 @@ int OnInit()
       engineNY.hora_fin_rango     = "09:30";
       engineNY.hora_inicio_operativa = "09:31";
       engineNY.hora_fin_operativa    = "11:00";
-      engineNY.cerramos_trades       = true;
+      engineNY.cerramos_trades       = false;
       engineNY.hora_fin_sesion       = "14:30";
       engineNY.direccion          = Reversion;
       engineNY.puntos_sl          = 6000;
       engineNY.ratio              = 3.0;
       engineNY.porcentaje_riesgo  = InpRiskGroupC;
-      engineNY.usar_filtro_exclusion_rango = true;
+      engineLnd.usar_filtro_opening_range_size = true;
+      engineLnd.opening_range_size = 6000;
+      engineLnd.opening_range_size_max = true;
       engineNY.permitir_viernes   = false; // Solo de Lunes a Jueves
       engineNY.usar_scoring       = false; // Riesgo asignado directamente por Grupo C
       
