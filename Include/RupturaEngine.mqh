@@ -45,6 +45,7 @@ private:
    void              GetLondonHighLow(double &h, double &l);
    int               GetConsecutiveCandles();
    double            GetDailyVWAP();
+   double            GetATR(ENUM_TIMEFRAMES tf, int period = 14);
    double            GetDailyATR(int period = 14);
    ENUM_TRADE_SCORE  CalculateTradeScore(double range_points, int consec);
 
@@ -446,7 +447,8 @@ void CRupturaEngine::EvaluarEntrada()
 
    // Validacion de Filtros
    if(!ValidarRangoSize(usar_filtro_opening_range_size, range_in_points, opening_range_size, opening_range_size_max)) return;
-   if(!ValidarATR(usar_filtro_atr, GetDailyATR(), atr_limit, atr_limit_max)) return;
+   double current_atr_val = GetATR(time_frame, 14);
+   if(!ValidarATR(usar_filtro_atr, current_atr_val, atr_limit, atr_limit_max)) return;
    if(!ValidarVolumen(usar_filtro_volumen, breakout_vol, volumen_limite)) return;
    if(!ValidarDistanciaRuptura(usar_filtro_distancia_ruptura, dist_breakout, distancia_ruptura_maxima)) return;
    if(!ValidarExclusionRango(usar_filtro_exclusion_rango, range_in_points)) return;
@@ -668,9 +670,9 @@ double CRupturaEngine::GetDailyVWAP()
    return (sum_v > 0) ? (sum_pv / sum_v) : 0;
 }
 
-double CRupturaEngine::GetDailyATR(int period = 14)
+double CRupturaEngine::GetATR(ENUM_TIMEFRAMES tf, int period = 14)
 {
-   int handle = iATR(_Symbol, PERIOD_D1, period);
+   int handle = iATR(_Symbol, tf, period);
    if(handle == INVALID_HANDLE) return 0;
    
    double buffer[];
@@ -680,6 +682,11 @@ double CRupturaEngine::GetDailyATR(int period = 14)
    
    if(copied <= 0) return 0;
    return buffer[0];
+}
+
+double CRupturaEngine::GetDailyATR(int period = 14)
+{
+   return GetATR(PERIOD_D1, period);
 }
 
 //+------------------------------------------------------------------+
