@@ -81,10 +81,9 @@ int OnInit()
       engineLnd.puntos_sl         = 10000;
       engineLnd.ratio             = 3.0;
       engineLnd.porcentaje_riesgo = InpRiskGroupB;
-      engineLnd.usar_filtro_opening_range_size = false;
+      engineLnd.usar_filtro_opening_range_size = true;
       engineLnd.opening_range_size = 2000;
       engineLnd.usar_filtro_exclusion_rango = true;
-      engineLnd.usar_filtro_sma200 = false;
       engineLnd.usar_scoring      = false; // Riesgo asignado directamente por Grupo B
       
       if(engineLnd.Init() != INIT_SUCCEEDED) return INIT_FAILED;
@@ -108,7 +107,6 @@ int OnInit()
       engineNY.puntos_sl          = 6000;
       engineNY.ratio              = 3.0;
       engineNY.porcentaje_riesgo  = InpRiskGroupC;
-      engineNY.usar_filtro_vwap   = false;
       engineNY.usar_filtro_exclusion_rango = true;
       engineNY.permitir_viernes   = false; // Solo de Lunes a Jueves
       engineNY.usar_scoring       = false; // Riesgo asignado directamente por Grupo C
@@ -134,7 +132,6 @@ int OnInit()
       engineNYFridays.puntos_sl          = 6000;
       engineNYFridays.ratio              = 3.0;
       engineNYFridays.porcentaje_riesgo  = InpRiskGroupA;
-      engineNYFridays.usar_filtro_vwap   = false;
       engineNYFridays.usar_filtro_exclusion_rango = true;
       engineNYFridays.permitir_lunes     = false;
       engineNYFridays.permitir_martes    = false;

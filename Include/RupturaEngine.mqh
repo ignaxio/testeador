@@ -88,7 +88,6 @@ public:
    bool              usar_filtro_sma200;
    bool              usar_filtro_vwap;
    double            vwap_multiplicador_atr;
-   bool              usar_filtro_londres;
    bool              usar_filtro_velas_consecutivas;
    int               max_velas_consecutivas;
    bool              permitir_lunes;
@@ -146,7 +145,6 @@ CRupturaEngine::CRupturaEngine()
    usar_filtro_exclusion_rango = false;
    usar_filtro_sma200 = false;
    usar_filtro_vwap = false;
-   usar_filtro_londres = false;
    usar_filtro_velas_consecutivas = false;
 }
 
@@ -454,9 +452,6 @@ void CRupturaEngine::EvaluarEntrada()
    if(!ValidarExclusionRango(usar_filtro_exclusion_rango, range_in_points)) return;
    if(!ValidarTendenciaSMA200(usar_filtro_sma200, tipo_orden)) return;
    
-   double lonH_val, lonL_val;
-   GetLondonHighLow(lonH_val, lonL_val);
-   if(!ValidarFiltroLondres(usar_filtro_londres, tipo_orden, lonH_val, lonL_val)) return;
    
    if(!ValidarFiltroVWAP(usar_filtro_vwap, tipo_orden, GetDailyVWAP(), GetDailyATR(), vwap_multiplicador_atr)) return;
 
