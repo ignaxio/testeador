@@ -11,12 +11,13 @@
 // FUNCIONES DE VALIDACIÃ“N
 //=========================
 
-bool ValidarRangoSize(bool usar_filtro, double range_points, double limit)
+bool ValidarRangoSize(bool usar_filtro, double range_points, double limit, bool es_maximo = true)
 {
    if(!usar_filtro) return true;
-   if(range_points <= limit)
+   if((es_maximo && range_points > limit) || (!es_maximo && range_points < limit))
    {
-      Print("Entrada cancelada por filtro de Opening Range Size. TamaÃ±o: ", DoubleToString(range_points, 1), " <= lÃ­mite: ", DoubleToString(limit, 1));
+      string comp = es_maximo ? " > " : " < " ;
+      Print("Entrada cancelada por filtro de Opening Range Size. Tamaño: ", DoubleToString(range_points, 1), comp, "límite: ", DoubleToString(limit, 1));
       return false;
    }
    return true;

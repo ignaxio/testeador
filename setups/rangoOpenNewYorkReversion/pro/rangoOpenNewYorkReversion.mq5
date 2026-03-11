@@ -54,7 +54,8 @@ int OnInit()
    engine.usar_filtro_volumen           = false;
    engine.volumen_limite                = 1000;
    engine.usar_filtro_opening_range_size = false;
-   engine.opening_range_size            = 2000;
+   engine.opening_range_size            = 6000;
+   engine.opening_range_size_max        = true;
    engine.usar_filtro_distancia_ruptura  = false;
    engine.distancia_ruptura_maxima      = 10.0;
    
@@ -69,7 +70,7 @@ int OnInit()
    engine.permitir_martes    = true;
    engine.permitir_miercoles = true;
    engine.permitir_jueves    = true;
-   engine.permitir_viernes   = true;
+   engine.permitir_viernes   = false;
    
    // --- Configuración del Sistema ---
    engine.MagicNumber       = 12347;

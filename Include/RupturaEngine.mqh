@@ -78,6 +78,7 @@ public:
    int               volumen_limite;
    bool              usar_filtro_opening_range_size;
    double            opening_range_size;
+   bool              opening_range_size_max;
    bool              usar_filtro_distancia_ruptura;
    double            distancia_ruptura_maxima;
    bool              usar_filtro_exclusion_rango;
@@ -133,7 +134,9 @@ CRupturaEngine::CRupturaEngine()
    
    usar_filtro_volumen = false;
    usar_filtro_opening_range_size = false;
-   usar_filtro_distancia_ruptura = false;
+   opening_range_size            = 2000;
+   opening_range_size_max        = true;
+   usar_filtro_distancia_ruptura  = false;
    usar_filtro_exclusion_rango = false;
    usar_filtro_sma200 = false;
    usar_filtro_vwap = false;
@@ -438,7 +441,7 @@ void CRupturaEngine::EvaluarEntrada()
    dist_breakout = NormalizeDouble(dist_breakout, 1);
 
    // Validacion de Filtros
-   if(!ValidarRangoSize(usar_filtro_opening_range_size, range_in_points, opening_range_size)) return;
+   if(!ValidarRangoSize(usar_filtro_opening_range_size, range_in_points, opening_range_size, opening_range_size_max)) return;
    if(!ValidarVolumen(usar_filtro_volumen, breakout_vol, volumen_limite)) return;
    if(!ValidarDistanciaRuptura(usar_filtro_distancia_ruptura, dist_breakout, distancia_ruptura_maxima)) return;
    if(!ValidarExclusionRango(usar_filtro_exclusion_rango, range_in_points)) return;
