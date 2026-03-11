@@ -17,7 +17,7 @@ bool ValidarRangoSize(bool usar_filtro, double range_points, double limit, bool 
    if((es_maximo && range_points > limit) || (!es_maximo && range_points < limit))
    {
       string comp = es_maximo ? " > " : " < " ;
-      Print("Entrada cancelada por filtro de Opening Range Size. Tama�o: ", DoubleToString(range_points, 1), comp, "l�mite: ", DoubleToString(limit, 1));
+      Print("Entrada cancelada por filtro de Opening Range Size. Tama�o: ", DoubleToString(range_points, 1), comp, "l�mite: ", DoubleToString(limit, 1));
       return false;
    }
    return true;
@@ -148,31 +148,14 @@ bool ValidarFiltroVWAP(bool activar, ENUM_ORDER_TYPE tipo_orden, double vwap, do
    return true;
 }
 
-bool ValidarFiltroLondres(bool activar, ENUM_ORDER_TYPE tipo_orden, double lonH, double lonL)
+bool ValidarATR(bool usar_filtro, double current_atr, double limit, bool es_maximo = true)
 {
-   if(!activar) return true;
-   if(lonH <= 0 || lonL <= 0) return true; // Si no hay datos, no filtramos
-
-   double precio = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-
-   if(tipo_orden == ORDER_TYPE_BUY)
+   if(!usar_filtro) return true;
+   if((es_maximo && current_atr > limit) || (!es_maximo && current_atr < limit))
    {
-      // Para un BUY (reversión de una ruptura bajista), el precio debe estar POR ENCIMA del mínimo de Londres
-      if(precio < lonL)
-      {
-         Print("Entrada BUY cancelada por filtro Londres. Precio: ", precio, " < Mínimo Londres: ", lonL);
-         return false;
-      }
+      string comp = es_maximo ? " > " : " < " ;
+      Print("Entrada cancelada por filtro de ATR. Valor: ", DoubleToString(current_atr, 1), comp, "límite: ", DoubleToString(limit, 1));
+      return false;
    }
-   else if(tipo_orden == ORDER_TYPE_SELL)
-   {
-      // Para un SELL (reversión de una ruptura alcista), el precio debe estar POR DEBAJO del máximo de Londres
-      if(precio > lonH)
-      {
-         Print("Entrada SELL cancelada por filtro Londres. Precio: ", precio, " > Máximo Londres: ", lonH);
-         return false;
-      }
-   }
-
    return true;
 }
