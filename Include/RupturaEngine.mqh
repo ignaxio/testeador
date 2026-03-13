@@ -107,6 +107,7 @@ private:
    double            m_profit_restante_actual;
 
    // --- Constructor e Interfaz ---
+public:
    CRupturaEngine();
    int               Init();
    void              OnTick();
