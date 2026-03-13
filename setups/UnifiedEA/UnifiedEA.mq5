@@ -108,9 +108,9 @@ int OnInit()
       engineNY.puntos_sl          = 6000;
       engineNY.ratio              = 3.0;
       engineNY.porcentaje_riesgo  = InpRiskGroupC;
-      engineLnd.usar_filtro_opening_range_size = true;
-      engineLnd.opening_range_size = 6000;
-      engineLnd.opening_range_size_max = true;
+      engineNY.usar_filtro_opening_range_size = true;
+      engineNY.opening_range_size = 6000;
+      engineNY.opening_range_size_max = true;
       engineNY.permitir_viernes   = false; // Solo de Lunes a Jueves
       engineNY.usar_scoring       = false; // Riesgo asignado directamente por Grupo C
       
