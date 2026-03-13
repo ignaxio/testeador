@@ -67,6 +67,7 @@ int OnInit()
    // 2. Configurar Estrategia LONDRES (Continuación) - GRUPO B
    if(InpLndEnable)
    {
+      engineLnd.SetRiskManager(&riskControl);
       engineLnd.nombre_estrategia = "Lnd_Continuacion";
       engineLnd.MagicNumber       = 88101;
       engineLnd.time_frame        = PERIOD_M2;
@@ -93,6 +94,7 @@ int OnInit()
    // 3. Configurar Estrategia NUEVA YORK SEMANA (Reversión) - GRUPO C
    if(InpNYEnable)
    {
+      engineNY.SetRiskManager(&riskControl);
       engineNY.nombre_estrategia  = "NY_Semana";
       engineNY.MagicNumber        = 88201;
       engineNY.time_frame         = PERIOD_M2;
@@ -120,6 +122,7 @@ int OnInit()
    // 4. Configurar Estrategia NUEVA YORK VIERNES (Reversión) - GRUPO A
    if(InpNYFridaysEnable)
    {
+      engineNYFridays.SetRiskManager(&riskControl);
       engineNYFridays.nombre_estrategia  = "NY_Viernes";
       engineNYFridays.MagicNumber        = 88202;
       engineNYFridays.time_frame         = PERIOD_M2;
@@ -158,8 +161,6 @@ void OnTick()
    // Cerramos todas las posiciones inmediatamente si se alcanza el Profit Target o el Max Loss.
    riskControl.CheckGlobalLimits();
 
-   double remaining_target = riskControl.GetRemainingProfitTarget();
-
    // 2. OPERATIVA DE ENTRADAS (Optimizado OnBar): Validamos límites de fondeo y riesgo dinámico
    // solo al cierre de vela para evitar cálculos innecesarios en cada tick.
    datetime current_bar = iTime(_Symbol, PERIOD_M2, 0);
@@ -179,7 +180,7 @@ void OnTick()
       if(g_can_operate) engineLnd.porcentaje_riesgo = InpRiskGroupB * g_dynamic_mult;
       else engineLnd.porcentaje_riesgo = 0; // Bloqueo de entradas
       
-      engineLnd.OnTick(remaining_target);
+      engineLnd.OnTick();
    }
    
    if(InpNYEnable)
@@ -187,7 +188,7 @@ void OnTick()
       if(g_can_operate) engineNY.porcentaje_riesgo = InpRiskGroupC * g_dynamic_mult;
       else engineNY.porcentaje_riesgo = 0; // Bloqueo de entradas
       
-      engineNY.OnTick(remaining_target);
+      engineNY.OnTick();
    }
 
    if(InpNYFridaysEnable)
@@ -195,6 +196,6 @@ void OnTick()
       if(g_can_operate) engineNYFridays.porcentaje_riesgo = InpRiskGroupA * g_dynamic_mult;
       else engineNYFridays.porcentaje_riesgo = 0; // Bloqueo de entradas
       
-      engineNYFridays.OnTick(remaining_target);
+      engineNYFridays.OnTick();
    }
 }
