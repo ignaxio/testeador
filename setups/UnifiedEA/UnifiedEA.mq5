@@ -23,6 +23,7 @@ input group "=== Estrategias Activas ==="
 input bool   InpLndEnable        = true;     // Activar Londres Continuación
 input bool   InpNYEnable         = true;     // Activar NY Reversión (Lunes-Jueves)
 input bool   InpNYFridaysEnable  = true;     // Activar NY Reversión (Viernes)
+input bool   InpProfiling        = false;    // Mostrar tiempos de ejecución (Profiling)
 
 input group "=== Riesgo por Grupo de Estrategia ==="
 input double InpRiskGroupA         = 0.5;      // % Riesgo Grupo A (NY Viernes)
@@ -87,6 +88,7 @@ int OnInit()
       engineLnd.opening_range_size_max = false;
       engineLnd.usar_filtro_exclusion_rango = true;
       engineLnd.usar_scoring      = false; // Riesgo asignado directamente por Grupo B
+      engineLnd.mostrar_profiling = InpProfiling;
       
       if(engineLnd.Init() != INIT_SUCCEEDED) return INIT_FAILED;
    }
@@ -115,6 +117,7 @@ int OnInit()
       engineNY.opening_range_size_max = true;
       engineNY.permitir_viernes   = false; // Solo de Lunes a Jueves
       engineNY.usar_scoring       = false; // Riesgo asignado directamente por Grupo C
+      engineNY.mostrar_profiling  = InpProfiling;
       
       if(engineNY.Init() != INIT_SUCCEEDED) return INIT_FAILED;
    }
@@ -145,6 +148,7 @@ int OnInit()
       engineNYFridays.permitir_jueves    = false;
       engineNYFridays.permitir_viernes   = true; // Solo Viernes
       engineNYFridays.usar_scoring       = false; // Riesgo asignado directamente por Grupo A
+      engineNYFridays.mostrar_profiling  = InpProfiling;
       
       if(engineNYFridays.Init() != INIT_SUCCEEDED) return INIT_FAILED;
    }

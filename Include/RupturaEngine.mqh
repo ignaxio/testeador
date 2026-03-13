@@ -103,6 +103,7 @@ public:
    bool              permitir_viernes;
    bool              imprimir_csv;
    bool              usar_scoring; // Si es true, aplica reducción de riesgo por puntuación (A/B/C)
+   bool              mostrar_profiling; // NUEVO: Mostrar tiempos de ejecución en el gráfico
 
    int               MagicNumber;
    string            nombre_estrategia;
@@ -135,6 +136,7 @@ CRupturaEngine::CRupturaEngine()
    m_sell_permitido_hoy = true;
    m_risk_manager = NULL;
    usar_scoring = false; // Por defecto desactivado para no afectar EAs individuales
+   mostrar_profiling = false;
    m_rango_top = 0;
    m_rango_bottom = 0;
    
@@ -193,6 +195,9 @@ int CRupturaEngine::Init()
 //+------------------------------------------------------------------+
 void CRupturaEngine::OnTick()
 {
+   ulong start_time = 0;
+   if(mostrar_profiling) start_time = GetMicrosecondCount();
+
    // 1. GESTIÓN DE TRADES ABIERTOS Y LOGS (Siempre en cada tick para precisión)
    // Nota: El cierre por hora debe funcionar incluso si hoy no se permite abrir nuevos trades
    if(cerramos_trades)
@@ -251,6 +256,28 @@ void CRupturaEngine::OnTick()
       if(horario_activo)
       {
          EvaluarEntrada();
+      }
+   }
+
+   if(mostrar_profiling)
+   {
+      ulong end_time = GetMicrosecondCount();
+      static ulong max_time = 0;
+      static ulong total_time = 0;
+      static int tick_count = 0;
+      
+      ulong elapsed = end_time - start_time;
+      if(elapsed > max_time) max_time = elapsed;
+      total_time += elapsed;
+      tick_count++;
+      
+      if(tick_count % 100 == 0) // Actualizar cada 100 ticks para no saturar
+      {
+         string msg = StringFormat("\n--- Profiling: %s ---\nÚltimo: %d µs\nMáximo: %d µs\nPromedio: %.2f µs", 
+                                   nombre_estrategia, elapsed, max_time, (double)total_time/tick_count);
+         // Se añade al comentario existente si lo hay
+         string current_comment = MQLInfoInteger(MQL_VISUAL_MODE) ? "Visual Mode Active\n" : ""; 
+         Comment(current_comment + msg);
       }
    }
 }
