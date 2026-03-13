@@ -30,12 +30,16 @@ private:
    bool              m_rango_calculado;
    bool              m_rango_fijado;
    bool              m_trade_ejecutado_hoy;
+   bool              m_dia_permitido_hoy; // CACHE: ¿Es hoy un día operativo?
+   bool              m_buy_permitido_hoy; // CACHE: ¿Se permite comprar hoy?
+   bool              m_sell_permitido_hoy;// CACHE: ¿Se permite vender hoy?
    double            m_rango_top;
    double            m_rango_bottom;
    CGestionRiesgoUnified *m_risk_manager;
 
    // --- Métodos Internos ---
    void              ResetearDia();
+   void              ActualizarEstadoFiltrosEstaticos(); // Nueva función de optimización
    void              ConstruirRango();
    void              EvaluarEntrada();
    void              EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points, int consec);
@@ -126,6 +130,9 @@ CRupturaEngine::CRupturaEngine()
    m_rango_calculado = false;
    m_rango_fijado = false;
    m_trade_ejecutado_hoy = false;
+   m_dia_permitido_hoy = true;
+   m_buy_permitido_hoy = true;
+   m_sell_permitido_hoy = true;
    m_risk_manager = NULL;
    usar_scoring = false; // Por defecto desactivado para no afectar EAs individuales
    m_rango_top = 0;
@@ -175,6 +182,9 @@ int CRupturaEngine::Init()
    // Inicializar el servicio de tiempo
    CTimeService::Init();
    
+   // Calcular estado inicial de filtros estáticos
+   ActualizarEstadoFiltrosEstaticos();
+   
    return(INIT_SUCCEEDED);
 }
 
@@ -184,6 +194,7 @@ int CRupturaEngine::Init()
 void CRupturaEngine::OnTick()
 {
    // 1. GESTIÓN DE TRADES ABIERTOS Y LOGS (Siempre en cada tick para precisión)
+   // Nota: El cierre por hora debe funcionar incluso si hoy no se permite abrir nuevos trades
    if(cerramos_trades)
       GestionarCierrePorHora();
 
@@ -194,7 +205,17 @@ void CRupturaEngine::OnTick()
    if(imprimir_csv)
       m_logger.OnTick();
 
-   // 2. OPERATIVA DE ENTRADAS (Solo al cierre de vela)
+   // 2. OPTIMIZACIÓN: Si hoy no es un día permitido, no seguimos con la lógica de entradas
+   // Solo permitimos continuar si el día es válido o si hay posiciones abiertas que gestionar (ya gestionadas arriba)
+   if(!m_dia_permitido_hoy && !HayPosicionAbierta())
+   {
+      // Comprobar si ha cambiado el día para resetear el estado
+      if(EsNuevoDia(m_ultimo_dia))
+         ResetearDia();
+      return;
+   }
+
+   // 3. OPERATIVA DE ENTRADAS (Solo al cierre de vela)
    bool is_new_bar = EsNuevaVela(m_ultima_vela_time, time_frame);
    
    // Mostrar comentario solo en nueva vela o modo visual para no sobrecargar
@@ -246,9 +267,32 @@ void CRupturaEngine::ResetearDia()
    m_rango_top = 0;
    m_rango_bottom = 0;
 
+   // Optimización: Cachear filtros al iniciar el día
+   ActualizarEstadoFiltrosEstaticos();
+
    MqlDateTime dt_broker_now;
    TimeCurrent(dt_broker_now);
-   PrintFormat("[%s] Nuevo día detectado (%02d:%02d:%02d). Variables reseteadas.", nombre_estrategia, dt_broker_now.hour, dt_broker_now.min, dt_broker_now.sec);
+   PrintFormat("[%s] Nuevo día detectado (%02d:%02d:%02d). Operativo hoy: %s", 
+               nombre_estrategia, dt_broker_now.hour, dt_broker_now.min, dt_broker_now.sec, (m_dia_permitido_hoy ? "SÍ" : "NO"));
+}
+
+//+------------------------------------------------------------------+
+//| Actualizar cache de filtros que no cambian en el día             |
+//+------------------------------------------------------------------+
+void CRupturaEngine::ActualizarEstadoFiltrosEstaticos()
+{
+   MqlDateTime dt;
+   TimeCurrent(dt);
+   
+   m_dia_permitido_hoy = true;
+   if(dt.day_of_week == 1 && !permitir_lunes)     m_dia_permitido_hoy = false;
+   else if(dt.day_of_week == 2 && !permitir_martes)    m_dia_permitido_hoy = false;
+   else if(dt.day_of_week == 3 && !permitir_miercoles) m_dia_permitido_hoy = false;
+   else if(dt.day_of_week == 4 && !permitir_jueves)    m_dia_permitido_hoy = false;
+   else if(dt.day_of_week == 5 && !permitir_viernes)   m_dia_permitido_hoy = false;
+   
+   m_buy_permitido_hoy = (m_dia_permitido_hoy && permitir_buy);
+   m_sell_permitido_hoy = (m_dia_permitido_hoy && permitir_sell);
 }
 
 //+------------------------------------------------------------------+
@@ -471,14 +515,17 @@ void CRupturaEngine::EvaluarEntrada()
    int current_consec = GetConsecutiveCandles();
    if(!ValidarVelasConsecutivas(usar_filtro_velas_consecutivas, current_consec, max_velas_consecutivas)) return;
 
-   // Validación de días de la semana
-   MqlDateTime dt_hoy;
-   TimeCurrent(dt_hoy);
-   if(dt_hoy.day_of_week == 1 && !permitir_lunes) return;
-   if(dt_hoy.day_of_week == 2 && !permitir_martes) return;
-   if(dt_hoy.day_of_week == 3 && !permitir_miercoles) return;
-   if(dt_hoy.day_of_week == 4 && !permitir_jueves) return;
-   if(dt_hoy.day_of_week == 5 && !permitir_viernes) return;
+   // Validación de días de la semana y permisos (USANDO CACHE)
+   if(tipo_orden == ORDER_TYPE_BUY && !m_buy_permitido_hoy) 
+   {
+      PrintFormat("[%s] Entrada BUY ignorada (Filtro estático)", nombre_estrategia);
+      return;
+   }
+   if(tipo_orden == ORDER_TYPE_SELL && !m_sell_permitido_hoy)
+   {
+      PrintFormat("[%s] Entrada SELL ignorada (Filtro estático)", nombre_estrategia);
+      return;
+   }
    
    EjecutarOrden(tipo_orden, range_in_points, current_consec);
 }
