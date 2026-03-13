@@ -126,6 +126,22 @@ public:
       return true;
    }
    
+   // --- Objetivo Restante ---
+   double GetRemainingProfitTarget()
+   {
+      if(m_balance_inicial <= 0) return 0;
+      
+      double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+      double current_profit = equity - m_balance_inicial;
+      
+      // Añadimos 0.02% de margen de seguridad sobre el balance inicial
+      double safety_margin = m_balance_inicial * 0.0002; 
+      double target_with_margin = m_target_profit + safety_margin;
+      
+      double remaining = target_with_margin - current_profit;
+      return (remaining > 0) ? remaining : 0;
+   }
+   
    // --- Información de Diagnóstico ---
    void PrintStatus()
    {

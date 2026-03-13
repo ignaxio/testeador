@@ -37,7 +37,7 @@ private:
    void              ResetearDia();
    void              ConstruirRango();
    void              EvaluarEntrada();
-   void              EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points, int consec);
+   void              EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points, int consec, double profit_restante = 0);
    void              GestionarCierrePorHora();
    bool              IsBrokerSessionActive(string start_time, string end_time, datetime broker_time = 0);
    bool              HayPosicionAbierta();
@@ -102,10 +102,13 @@ public:
    int               MagicNumber;
    string            nombre_estrategia;
 
+private:
+   double            m_profit_restante_actual;
+
    // --- Constructor e Interfaz ---
    CRupturaEngine();
    int               Init();
-   void              OnTick();
+   void              OnTick(double profit_restante = 0);
 };
 
 //+------------------------------------------------------------------+
@@ -118,6 +121,7 @@ CRupturaEngine::CRupturaEngine()
    m_rango_calculado = false;
    m_rango_fijado = false;
    m_trade_ejecutado_hoy = false;
+   m_profit_restante_actual = 0;
    usar_scoring = false; // Por defecto desactivado para no afectar EAs individuales
    m_rango_top = 0;
    m_rango_bottom = 0;
@@ -172,7 +176,7 @@ int CRupturaEngine::Init()
 //+------------------------------------------------------------------+
 //| Engine tick function                                             |
 //+------------------------------------------------------------------+
-void CRupturaEngine::OnTick()
+void CRupturaEngine::OnTick(double profit_restante)
 {
    // 1. GESTIÓN DE TRADES ABIERTOS Y LOGS (Siempre en cada tick para precisión)
    if(cerramos_trades)
@@ -219,7 +223,10 @@ void CRupturaEngine::OnTick()
          horario_activo = IsBrokerSessionActive(hora_inicio_operativa, hora_fin_operativa);
 
       if(horario_activo)
+      {
+         m_profit_restante_actual = profit_restante;
          EvaluarEntrada();
+      }
    }
 }
 
@@ -469,13 +476,13 @@ void CRupturaEngine::EvaluarEntrada()
    if(dt_hoy.day_of_week == 4 && !permitir_jueves) return;
    if(dt_hoy.day_of_week == 5 && !permitir_viernes) return;
    
-   EjecutarOrden(tipo_orden, range_in_points, current_consec);
+   EjecutarOrden(tipo_orden, range_in_points, current_consec, m_profit_restante_actual);
 }
 
 //+------------------------------------------------------------------+
 //| Ejecutar la orden al mercado                                     |
 //+------------------------------------------------------------------+
-void CRupturaEngine::EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points, int consec)
+void CRupturaEngine::EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points, int consec, double profit_restante)
 {
    double precio = (tipo == ORDER_TYPE_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_ASK) : SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double sl, tp;
@@ -500,6 +507,33 @@ void CRupturaEngine::EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points, in
       lote = Lots;
    else
       lote = CalcularLotePorRiesgo(puntos_sl, porcentaje_riesgo * (double)score / 100.0);
+
+   // --- AJUSTE DE LOTE POR PROFIT TARGET RESTANTE ---
+   if(profit_restante > 0 && !sl_fijo)
+   {
+      double tick_value = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+      double tick_size  = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+      double points_to_tp = puntos_sl * ratio;
+      
+      // Profit esperado con el lote calculado (bruto)
+      double profit_esperado = (points_to_tp * _Point) * (tick_value / tick_size) * lote;
+      
+      if(profit_esperado > profit_restante)
+      {
+         double nuevo_lote = (lote * profit_restante) / profit_esperado;
+         
+         // Redondear hacia ARRIBA para asegurar alcanzar el target (dentro del Step)
+         double step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+         nuevo_lote = MathCeil(nuevo_lote / step) * step;
+         
+         double min_lote = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+         if(nuevo_lote < min_lote) nuevo_lote = min_lote;
+         
+         PrintFormat("[%s] Ajustando lote por proximidad al target. Restante: %.2f, Profit Esperado: %.2f, Lote original: %.2f, Nuevo lote: %.2f", 
+                     nombre_estrategia, profit_restante, profit_esperado, lote, nuevo_lote);
+         lote = nuevo_lote;
+      }
+   }
 
    // Log previo a ejecución
    if(imprimir_csv)

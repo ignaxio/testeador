@@ -158,6 +158,8 @@ void OnTick()
    // Cerramos todas las posiciones inmediatamente si se alcanza el Profit Target o el Max Loss.
    riskControl.CheckGlobalLimits();
 
+   double remaining_target = riskControl.GetRemainingProfitTarget();
+
    // 2. OPERATIVA DE ENTRADAS (Optimizado OnBar): Validamos límites de fondeo y riesgo dinámico
    // solo al cierre de vela para evitar cálculos innecesarios en cada tick.
    datetime current_bar = iTime(_Symbol, PERIOD_M2, 0);
@@ -177,7 +179,7 @@ void OnTick()
       if(g_can_operate) engineLnd.porcentaje_riesgo = InpRiskGroupB * g_dynamic_mult;
       else engineLnd.porcentaje_riesgo = 0; // Bloqueo de entradas
       
-      engineLnd.OnTick();
+      engineLnd.OnTick(remaining_target);
    }
    
    if(InpNYEnable)
@@ -185,7 +187,7 @@ void OnTick()
       if(g_can_operate) engineNY.porcentaje_riesgo = InpRiskGroupC * g_dynamic_mult;
       else engineNY.porcentaje_riesgo = 0; // Bloqueo de entradas
       
-      engineNY.OnTick();
+      engineNY.OnTick(remaining_target);
    }
 
    if(InpNYFridaysEnable)
@@ -193,6 +195,6 @@ void OnTick()
       if(g_can_operate) engineNYFridays.porcentaje_riesgo = InpRiskGroupA * g_dynamic_mult;
       else engineNYFridays.porcentaje_riesgo = 0; // Bloqueo de entradas
       
-      engineNYFridays.OnTick();
+      engineNYFridays.OnTick(remaining_target);
    }
 }
