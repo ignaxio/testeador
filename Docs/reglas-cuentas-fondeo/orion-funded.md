@@ -6,6 +6,12 @@ Fuentes:
 - https://help.orionfunded.com/es/trading-rules
 - https://help.orionfunded.com/es/doc/practicas-de-comercio-prohibidas
 
+### Porcentajes de perdidas y profits:
+
+- % Máximo Pérdida Diaria 4%
+- % Máximo Pérdida Total 8%
+- % Objetivo de Beneficio 7.5%
+
 ---
 
 # 1. Principios Generales
