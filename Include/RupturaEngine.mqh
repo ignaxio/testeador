@@ -44,17 +44,24 @@ private:
    void              ActualizarEstadoFiltrosEstaticos(); // Nueva función de optimización
    void              ConstruirRango();
    void              EvaluarEntrada();
-   void              EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points, int consec);
+   void              EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points);
    void              GestionarCierrePorHora();
    bool              IsBrokerSessionActive(string start_time, string end_time, datetime broker_time = 0);
    bool              HayPosicionAbierta();
    bool              PositionSelectByMagic(long magic);
-   void              GetLondonHighLow(double &h, double &l);
-   int               GetConsecutiveCandles();
-   double            GetDailyVWAP();
-   double            GetATR(ENUM_TIMEFRAMES tf, int period = 14);
-   double            GetDailyATR(int period = 14);
-   ENUM_TRADE_SCORE  CalculateTradeScore(double range_points, int consec);
+   double            GetATR(ENUM_TIMEFRAMES tf, int period = 14)
+   {
+      int handle = iATR(_Symbol, tf, period);
+      if(handle == INVALID_HANDLE) return 0.0;
+      double buffer[];
+      if(CopyBuffer(handle, 0, 0, 1, buffer) > 0)
+      {
+         IndicatorRelease(handle);
+         return buffer[0];
+      }
+      IndicatorRelease(handle);
+      return 0.0;
+   }
 
 public:
    // --- Configuración (Pública para fácil asignación desde MQ5) ---
@@ -82,29 +89,19 @@ public:
    double            ratio_activacion_be;
    double            porcentaje_sl_nuevo;
 
-   bool              usar_filtro_volumen;
-   int               volumen_limite;
    bool              usar_filtro_opening_range_size;
    double            opening_range_size;
    bool              opening_range_size_mayor_que;
    bool              usar_filtro_atr;
    double            atr_limit;
    bool              atr_limit_mayor_que;
-   bool              usar_filtro_distancia_ruptura;
-   double            distancia_ruptura_maxima;
    bool              usar_filtro_exclusion_rango;
-   bool              usar_filtro_sma200;
-   bool              usar_filtro_vwap;
-   double            vwap_multiplicador_atr;
-   bool              usar_filtro_velas_consecutivas;
-   int               max_velas_consecutivas;
    bool              permitir_lunes;
    bool              permitir_martes;
    bool              permitir_miercoles;
    bool              permitir_jueves;
    bool              permitir_viernes;
    bool              imprimir_csv;
-   bool              usar_scoring; // Si es true, aplica reducción de riesgo por puntuación (A/B/C)
    bool              mostrar_profiling; // NUEVO: Mostrar tiempos de ejecución en el gráfico
 
    int               MagicNumber;
@@ -137,7 +134,6 @@ CRupturaEngine::CRupturaEngine()
    m_buy_permitido_hoy = true;
    m_sell_permitido_hoy = true;
    m_risk_manager = NULL;
-   usar_scoring = false; // Por defecto desactivado para no afectar EAs individuales
    mostrar_profiling = false;
    m_rango_top = 0;
    m_rango_bottom = 0;
@@ -155,18 +151,13 @@ CRupturaEngine::CRupturaEngine()
    porcentaje_riesgo = 0.5;
    usar_mover_sl_a_be = false;
    
-   usar_filtro_volumen = false;
    usar_filtro_opening_range_size = false;
    opening_range_size            = 2000;
    opening_range_size_mayor_que        = true;
    usar_filtro_atr               = false;
    atr_limit                     = 0;
    atr_limit_mayor_que                 = true;
-   usar_filtro_distancia_ruptura  = false;
    usar_filtro_exclusion_rango = false;
-   usar_filtro_sma200 = false;
-   usar_filtro_vwap = false;
-   usar_filtro_velas_consecutivas = false;
 }
 
 //+------------------------------------------------------------------+
@@ -237,8 +228,11 @@ void CRupturaEngine::OnTick()
    // 3. OPERATIVA DE ENTRADAS (Solo al cierre de vela)
    bool is_new_bar = EsNuevaVela(m_ultima_vela_time, time_frame);
    
+   if(!is_new_bar)
+      return;
+      
    // Mostrar comentario solo en nueva vela o modo visual para no sobrecargar
-   if(MQLInfoInteger(MQL_VISUAL_MODE) && is_new_bar)
+   if(MQLInfoInteger(MQL_VISUAL_MODE))
    {
       string msg = StringFormat("Estrategia: %s\nBroker: %s\nLondon: %s\nNY: %s\nUTC: %s", 
          nombre_estrategia,
@@ -248,9 +242,6 @@ void CRupturaEngine::OnTick()
          TimeToString(CTimeService::GetUTCTime(), TIME_MINUTES|TIME_SECONDS));
       Comment(msg);
    }
-
-   if(!is_new_bar)
-      return;
 
    // Lógica de entradas (Búsqueda de rango y señales)
    if(EsNuevoDia(m_ultimo_dia))
@@ -531,30 +522,12 @@ void CRupturaEngine::EvaluarEntrada()
 
    double current_range_size = (m_rango_top - m_rango_bottom);
    double range_in_points = NormalizeDouble(current_range_size / (_Point * multiplier_sym), 1);
-   long breakout_vol = m_logger.GetRealVolume(time_frame, 1);
    
-   double precio_actual_para_dist = (tipo_orden == ORDER_TYPE_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_ASK) : SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   double dist_breakout = 0;
-   if(tipo_orden == ORDER_TYPE_BUY)
-      dist_breakout = (precio_actual_para_dist - m_rango_top) / (_Point * multiplier_sym);
-   else
-      dist_breakout = (m_rango_bottom - precio_actual_para_dist) / (_Point * multiplier_sym);
-   dist_breakout = NormalizeDouble(dist_breakout, 1);
-
    // Validacion de Filtros
    if(!ValidarRangoSize(usar_filtro_opening_range_size, range_in_points, opening_range_size, opening_range_size_mayor_que)) return;
    double current_atr_val = GetATR(time_frame, 14);
    if(!ValidarATR(usar_filtro_atr, current_atr_val, atr_limit, atr_limit_mayor_que)) return;
-   if(!ValidarVolumen(usar_filtro_volumen, breakout_vol, volumen_limite)) return;
-   if(!ValidarDistanciaRuptura(usar_filtro_distancia_ruptura, dist_breakout, distancia_ruptura_maxima)) return;
    if(!ValidarExclusionRango(usar_filtro_exclusion_rango, range_in_points)) return;
-   if(!ValidarTendenciaSMA200(usar_filtro_sma200, tipo_orden)) return;
-   
-   
-   if(!ValidarFiltroVWAP(usar_filtro_vwap, tipo_orden, GetDailyVWAP(), GetDailyATR(), vwap_multiplicador_atr)) return;
-
-   int current_consec = GetConsecutiveCandles();
-   if(!ValidarVelasConsecutivas(usar_filtro_velas_consecutivas, current_consec, max_velas_consecutivas)) return;
 
    // Validación de días de la semana y permisos (USANDO CACHE)
    if(tipo_orden == ORDER_TYPE_BUY && !m_buy_permitido_hoy) 
@@ -568,13 +541,13 @@ void CRupturaEngine::EvaluarEntrada()
       return;
    }
    
-   EjecutarOrden(tipo_orden, range_in_points, current_consec);
+   EjecutarOrden(tipo_orden, range_in_points);
 }
 
 //+------------------------------------------------------------------+
 //| Ejecutar la orden al mercado                                     |
 //+------------------------------------------------------------------+
-void CRupturaEngine::EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points, int consec)
+void CRupturaEngine::EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points)
 {
    double precio = (tipo == ORDER_TYPE_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_ASK) : SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double sl, tp;
@@ -593,12 +566,11 @@ void CRupturaEngine::EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points, in
    m_trade.SetExpertMagicNumber(MagicNumber);
    
    double lote;
-   ENUM_TRADE_SCORE score = CalculateTradeScore(range_points, consec);
    
    if(sl_fijo)
       lote = Lots;
    else
-      lote = CalcularLotePorRiesgo(puntos_sl, porcentaje_riesgo * (double)score / 100.0);
+      lote = CalcularLotePorRiesgo(puntos_sl, porcentaje_riesgo);
 
    // --- AJUSTE DE LOTE POR PROFIT TARGET RESTANTE (Cálculo Lazy) ---
    if(m_risk_manager != NULL && !sl_fijo)
@@ -635,25 +607,7 @@ void CRupturaEngine::EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points, in
    // Log previo a ejecución
    if(imprimir_csv)
    {
-      double lonH, lonL;
-      GetLondonHighLow(lonH, lonL);
-      double yesH = iHigh(_Symbol, PERIOD_D1, 1);
-      double yesL = iLow(_Symbol, PERIOD_D1, 1);
-      double curVWAP = GetDailyVWAP();
-      
-      int digits_sym = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-      double multiplier_sym = (digits_sym == 3 || digits_sym == 5) ? 10.0 : 1.0;
-
-      double dist_breakout = 0;
-      if(tipo == ORDER_TYPE_BUY)
-         dist_breakout = (precio - m_rango_top) / (_Point * multiplier_sym);
-      else
-         dist_breakout = (m_rango_bottom - precio) / (_Point * multiplier_sym);
-      dist_breakout = NormalizeDouble(dist_breakout, 1);
-
-      m_logger.OnTradeOpen(nombre_estrategia, MagicNumber, tipo, precio, sl, tp, m_rango_top, m_rango_bottom, time_frame, (double)m_logger.GetRealVolume(time_frame, 1), range_points, dist_breakout,
-                         (precio - curVWAP)/_Point, (precio - lonH)/_Point, (precio - lonL)/_Point, 
-                         (precio - yesH)/_Point, (precio - yesL)/_Point, consec);
+      m_logger.OnTradeOpen(nombre_estrategia, MagicNumber, tipo, precio, sl, tp, time_frame, range_points);
    }
 
    bool resultado;
@@ -674,33 +628,6 @@ void CRupturaEngine::EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points, in
       if(ticket > 0)
       {
          m_pos_cache.Add(ticket, precio, sl, tp);
-         CPositionState *state = m_pos_cache.Get(ticket);
-         if(state != NULL)
-         {
-            state.atr_val = GetDailyATR();
-            state.volumen_entrada = m_logger.GetRealVolume(time_frame, 1);
-            state.spread_entrada = (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
-            state.consecutive_candles = consec;
-            
-            // SMA200 H1
-            int h_sma = iMA(_Symbol, PERIOD_H1, 200, 0, MODE_SMA, PRICE_CLOSE);
-            if(h_sma != INVALID_HANDLE)
-            {
-               double buf[];
-               if(CopyBuffer(h_sma, 0, 0, 1, buf) > 0) state.sma200_val = buf[0];
-               IndicatorRelease(h_sma);
-            }
-            
-            state.vwap_val = GetDailyVWAP();
-            
-            double digits_sym = SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-            double multiplier_sym = (digits_sym == 3 || digits_sym == 5) ? 10.0 : 1.0;
-            
-            if(tipo == ORDER_TYPE_BUY)
-               state.dist_breakout = (precio - m_rango_top) / (_Point * multiplier_sym);
-            else
-               state.dist_breakout = (m_rango_bottom - precio) / (_Point * multiplier_sym);
-         }
 
          if(imprimir_csv)
             m_logger.SetActiveTicket(ticket);
@@ -780,105 +707,4 @@ bool CRupturaEngine::PositionSelectByMagic(long magic)
          return true;
    }
    return false;
-}
-
-void CRupturaEngine::GetLondonHighLow(double &h, double &l)
-{
-   h = 0; l = 0;
-   MqlRates rates[];
-   ArraySetAsSeries(rates, true);
-   int copied = CopyRates(_Symbol, PERIOD_M5, 0, 300, rates); 
-   bool first = true;
-   for(int i=0; i<copied; i++) {
-      if(CTimeService::IsMarketSessionActive(ZONE_LONDON, "08:00", "15:00", rates[i].time)) {
-         if(first) { h = rates[i].high; l = rates[i].low; first = false; }
-         else { if(rates[i].high > h) h = rates[i].high; if(rates[i].low < l) l = rates[i].low; }
-      }
-   }
-}
-
-int CRupturaEngine::GetConsecutiveCandles()
-{
-   MqlRates rates[];
-   ArraySetAsSeries(rates, true);
-   if(CopyRates(_Symbol, time_frame, 1, 12, rates) < 1) return 0;
-   int count = 1;
-   bool bullish = (rates[0].close > rates[0].open);
-   for(int i=1; i<ArraySize(rates); i++) {
-      if((rates[i].close > rates[i].open) == bullish && rates[i].close != rates[i].open) count++;
-      else break;
-   }
-   return count;
-}
-
-double CRupturaEngine::GetDailyVWAP()
-{
-   MqlDateTime dt;
-   datetime now = TimeCurrent();
-   TimeToStruct(now, dt);
-   dt.hour = 0; dt.min = 0; dt.sec = 0;
-   datetime start_of_day = StructToTime(dt);
-   
-   MqlRates rates[];
-   ArraySetAsSeries(rates, true);
-   int copied = CopyRates(_Symbol, _Period, start_of_day, now, rates);
-   
-   if(copied <= 0) return 0;
-   
-   double sum_pv = 0;
-   double sum_v = 0;
-   
-   for(int i=0; i<copied; i++)
-   {
-      double typical = (rates[i].high + rates[i].low + rates[i].close) / 3.0;
-      sum_pv += (typical * (double)rates[i].tick_volume);
-      sum_v += (double)rates[i].tick_volume;
-   }
-   
-   return (sum_v > 0) ? (sum_pv / sum_v) : 0;
-}
-
-double CRupturaEngine::GetATR(ENUM_TIMEFRAMES tf, int period = 14)
-{
-   int handle = iATR(_Symbol, tf, period);
-   if(handle == INVALID_HANDLE) return 0;
-   
-   double buffer[];
-   ArraySetAsSeries(buffer, true);
-   int copied = CopyBuffer(handle, 0, 0, 1, buffer);
-   IndicatorRelease(handle);
-   
-   if(copied <= 0) return 0;
-   return buffer[0];
-}
-
-double CRupturaEngine::GetDailyATR(int period = 14)
-{
-   return GetATR(PERIOD_D1, period);
-}
-
-//+------------------------------------------------------------------+
-//| Calcular puntuación de probabilidad para el trade                |
-//+------------------------------------------------------------------+
-ENUM_TRADE_SCORE CRupturaEngine::CalculateTradeScore(double range_points, int consec)
-{
-   if(!usar_scoring) return SCORE_A; // Si no usamos scoring, riesgo completo siempre (100%)
-
-   MqlDateTime dt;
-   TimeCurrent(dt);
-   
-   // Estrategia NY (Reversión)
-   if(direccion == Reversion)
-   {
-      if(dt.day_of_week == 5) return SCORE_A; // NY Viernes -> Grupo A
-      return SCORE_C;                         // Resto de NY -> Grupo C
-   }
-   
-   // Estrategia Londres (Continuación)
-   if(direccion == Continuacion)
-   {
-      return SCORE_B; // LND -> Grupo B
-   }
-   
-   return SCORE_B; // Por defecto
 }

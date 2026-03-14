@@ -23,15 +23,6 @@ public:
    double   sl_inicial;
    double   tp_inicial;
    
-   // Filtros en T=0
-   double   sma200_val;
-   double   vwap_val;
-   double   atr_val;
-   long     volumen_entrada;
-   int      spread_entrada;
-   double   dist_breakout;
-   int      consecutive_candles;
-
    // Métricas de Recorrido (Live)
    double   r_maximo;
    double   precio_max;
@@ -44,13 +35,6 @@ public:
       precio_ent = 0;
       sl_inicial = 0;
       tp_inicial = 0;
-      sma200_val = 0;
-      vwap_val = 0;
-      atr_val = 0;
-      volumen_entrada = 0;
-      spread_entrada = 0;
-      dist_breakout = 0;
-      consecutive_candles = 0;
       r_maximo = 0;
       precio_max = 0;
       precio_min = 0;

@@ -40,7 +40,6 @@ input double            InpRatioTP           = 3.0;             // Ratio Take Pr
 input bool              InpSLFijo            = false;           // ¿Usar Lote Fijo? (false = % Riesgo)
 input double            InpLots              = 0.01;            // Lote Fijo (si InpSLFijo=true)
 input double            InpRiskPercent       = 1.0;             // Porcentaje de Riesgo (%)
-input bool              InpUseScoring        = false;           // Usar Reducción Riesgo por Scoring
 
 // --- Gestión de SL Dinámico (Breakeven) ---
 input group "Gestión SL Dinámico"
@@ -59,19 +58,8 @@ input bool              InpUseATR            = true;            // Activar Filtr
 input double            InpATRLimit          = 18;              // Límite ATR
 input bool              InpATRIsMax          = false;           // ¿Es Límite Máximo? (true=Máx, false=Mín)
 
-input group "Filtro: Volumen"
-input bool              InpUseVolume         = false;           // Activar Filtro Volumen
-input int               InpVolumeLimit       = 1000;            // Volumen Mínimo requerido
-
-input group "Filtros Técnicos Adicionales"
-input bool              InpUseDistBreakout   = false;           // Filtro Distancia Ruptura Máxima
-input double            InpDistBreakoutLimit = 10.0;            // Distancia Máxima (puntos)
+input group "Filtro: Exclusión Rango"
 input bool              InpUseRangeExcl      = true;            // Filtro Exclusión Rango (3100-4500)
-input bool              InpUseSMA200         = false;           // Filtro SMA200 (H1)
-input bool              InpUseVWAP           = false;           // Filtro VWAP
-input double            InpVWAPMult          = 0.5;             // Multiplicador ATR para VWAP
-input bool              InpUseConsec         = false;           // Filtro Velas Consecutivas
-input int               InpMaxConsec         = 4;               // Máximo de Velas Consecutivas
 
 input group "Filtro: Días de la Semana"
 input bool              InpPermitirLunes     = true;
@@ -121,7 +109,6 @@ int OnInit()
    engine.sl_fijo           = InpSLFijo;
    engine.Lots              = InpLots;
    engine.porcentaje_riesgo = InpRiskPercent;
-   engine.usar_scoring      = InpUseScoring;
    
    // Gestión Dinámica SL
    engine.usar_mover_sl_a_be = InpUseBE;
@@ -137,17 +124,7 @@ int OnInit()
    engine.atr_limit                     = InpATRLimit;
    engine.atr_limit_mayor_que                 = InpATRIsMax;
    
-   engine.usar_filtro_volumen           = InpUseVolume;
-   engine.volumen_limite                = InpVolumeLimit;
-   
-   engine.usar_filtro_distancia_ruptura = InpUseDistBreakout;
-   engine.distancia_ruptura_maxima      = InpDistBreakoutLimit;
    engine.usar_filtro_exclusion_rango   = InpUseRangeExcl;
-   engine.usar_filtro_sma200            = InpUseSMA200;
-   engine.usar_filtro_vwap              = InpUseVWAP;
-   engine.vwap_multiplicador_atr        = InpVWAPMult;
-   engine.usar_filtro_velas_consecutivas = InpUseConsec;
-   engine.max_velas_consecutivas        = InpMaxConsec;
    
    // Días
    engine.permitir_lunes     = InpPermitirLunes;

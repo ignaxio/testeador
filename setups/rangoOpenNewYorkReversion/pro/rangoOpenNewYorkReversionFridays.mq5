@@ -47,9 +47,6 @@ int OnInit()
    
    // --- Filtros de Entrada (v2.2 / v3.0 Final) ---
    engine.usar_filtro_exclusion_rango   = true;  // Excluye rangos entre 3100 y 4500 puntos
-   engine.usar_filtro_velas_consecutivas = false;
-   engine.usar_filtro_vwap               = false;
-   engine.usar_filtro_londres            = false;
    
    // --- Filtro de Días (SOLO VIERNES) ---
    engine.permitir_lunes     = false;

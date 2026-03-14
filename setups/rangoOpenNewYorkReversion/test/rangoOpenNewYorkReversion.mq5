@@ -55,21 +55,11 @@ int OnInit()
    engine.porcentaje_sl_nuevo = 50.0;
    
    // --- Filtros de Entrada (v2.2) ---
-   engine.usar_filtro_volumen           = false;
-   engine.volumen_limite                = 1000;
    engine.usar_filtro_opening_range_size = false;
    engine.opening_range_size            = 2000;
-   engine.usar_filtro_distancia_ruptura  = false;
-   engine.distancia_ruptura_maxima      = 10.0;
    
    // --- Aplicar Configuración v2.2 ---
    engine.usar_filtro_exclusion_rango   = inp_usar_exclusion_rango;
-   engine.usar_filtro_velas_consecutivas = inp_usar_filtro_velas;
-   engine.max_velas_consecutivas         = inp_max_velas_consec;
-   
-   engine.usar_filtro_vwap     = false;
-   engine.vwap_multiplicador_atr = 0.0;
-   engine.usar_filtro_londres  = false;
    
    // --- Configuración del Sistema ---
    engine.MagicNumber       = 12345;
