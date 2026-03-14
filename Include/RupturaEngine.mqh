@@ -191,28 +191,27 @@ void CRupturaEngine::OnTick()
    ulong start_time = 0;
    if(mostrar_profiling) start_time = GetMicrosecondCount();
 
-   // 1. GESTIÓN DE TRADES ABIERTOS Y LOGS (Siempre en cada tick para precisión)
-   // Nota: El cierre por hora debe funcionar incluso si hoy no se permite abrir nuevos trades
+   // 1. ACTUALIZAR MÉTRICAS DEL CACHÉ (Antes de cualquier cierre o log)
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket > 0 && PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+      {
+         m_pos_cache.UpdateMetrics(ticket, PositionGetDouble(POSITION_PRICE_CURRENT));
+      }
+   }
+
+   // 2. GESTIÓN DE TRADES ABIERTOS (Cierres y SL)
    if(cerramos_trades)
       GestionarCierrePorHora();
 
-   // Gestión de SL (Trailing / BE) - Debe ser OnTick para reaccionar al precio al instante
+   // Gestión de SL (Trailing / BE)
    AplicarGestionSLDinamico(MagicNumber, usar_mover_sl_a_be, ratio_activacion_be, porcentaje_sl_nuevo, &m_pos_cache);
 
-   // Logger OnTick para capturar MAE/MFE reales
+   // 3. LOGGER (Procesar cierres detectando datos del caché antes de que se limpie)
    if(imprimir_csv)
    {
       m_logger.OnTick(&m_pos_cache);
-      
-      // Actualizar métricas del caché
-      for(int i = PositionsTotal() - 1; i >= 0; i--)
-      {
-         ulong ticket = PositionGetTicket(i);
-         if(ticket > 0 && PositionGetInteger(POSITION_MAGIC) == MagicNumber)
-         {
-            m_pos_cache.UpdateMetrics(ticket, PositionGetDouble(POSITION_PRICE_CURRENT));
-         }
-      }
    }
 
    // 2. OPTIMIZACIÓN: Si hoy no es un día permitido, no seguimos con la lógica de entradas
@@ -658,7 +657,7 @@ void CRupturaEngine::GestionarCierrePorHora()
          if(ticket > 0 && PositionGetInteger(POSITION_MAGIC) == MagicNumber)
          {
             m_trade.PositionClose(ticket);
-            m_pos_cache.Remove(ticket); // Limpiar caché al cerrar
+            // m_pos_cache.Remove(ticket); // Se comenta: El logger se encargará de limpiar el caché tras loguear
             string ref_str = (modo_horario == MODO_MERCADO) ? "Mercado: " : "Broker: ";
             PrintFormat("[%s] Posición cerrada por fin de sesión (%s%s). Ticket: %d", nombre_estrategia, ref_str, hora_fin_sesion, ticket);
          }

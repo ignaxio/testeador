@@ -184,13 +184,13 @@ public:
                }
             }
             
-            DetectAndLogClose(trade_data, i);
+            DetectAndLogClose(trade_data, i, cache);
          }
       }
    }
 
 private:
-   void DetectAndLogClose(CTradeData *trade_data, int index)
+   void DetectAndLogClose(CTradeData *trade_data, int index, CPositionCache *cache = NULL)
    {
       if(HistorySelectByPosition(trade_data.ticket))
       {
@@ -210,6 +210,11 @@ private:
                   WriteToCSV(trade_data, exit_price, time_close, duration_min);
                   
                   Print("Trade logueado en CSV automáticamente por el logger. Ticket: ", trade_data.ticket);
+                  
+                  // Limpiar caché ahora que ya hemos logueado
+                  if(cache != NULL)
+                     cache.Remove(trade_data.ticket);
+                     
                   m_active_trades.Delete(index);
                   return;
                }
@@ -217,6 +222,8 @@ private:
          }
       }
       // Si no encontramos el deal de salida pero la posicion ya no existe
+      if(cache != NULL)
+         cache.Remove(trade_data.ticket);
       m_active_trades.Delete(index);
    }
 
