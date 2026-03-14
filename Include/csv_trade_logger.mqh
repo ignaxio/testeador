@@ -9,6 +9,8 @@
 
 #include <Arrays\ArrayObj.mqh>
 
+#include "PositionCache.mqh"
+
 //+------------------------------------------------------------------+
 //| Clase para almacenar datos de un trade específico                |
 //+------------------------------------------------------------------+
@@ -38,6 +40,11 @@ public:
    double   dist_yesterday_h;
    double   dist_yesterday_l;
    int      consecutive_candles;
+   
+   // Nuevos campos del Caché
+   double   r_maximo;
+   double   sma200_val_entry;
+   double   vwap_val_entry;
 
    CTradeData()
    {
@@ -64,6 +71,9 @@ public:
       dist_yesterday_h = 0;
       dist_yesterday_l = 0;
       consecutive_candles = 0;
+      r_maximo = 0;
+      sma200_val_entry = 0;
+      vwap_val_entry = 0;
    }
 };
 
@@ -112,11 +122,11 @@ public:
             Print("Creando nuevo archivo CSV en carpeta COMMON: ", m_filename);
             FileWrite(handle, 
                "Strategy", "Magic", "Date", "TimeOpen", "TimeClose", "Direction", "EntryPrice", "StopLoss", "TakeProfit", 
-               "ResultPoints", "ResultR", "MAE_Points", "MFE_Points", "SMA200_Trend", 
+               "ResultPoints", "ResultR", "MAE_Points", "MFE_Points", "R_Maximo", "SMA200_Trend", 
                "Breakout_Volume", "Duration_Minutes", "Spread_Entry",
                "OpeningRangeSize", "ATR", "YesterdayRange", "DistanceBreakout", 
                "Dist_VWAP", "Dist_London_H", "Dist_London_L", "Dist_Yesterday_H", "Dist_Yesterday_L", "Consec_Candles",
-               "DayOfWeek", "Month"
+               "DayOfWeek", "Month", "SMA200_Entry", "VWAP_Entry"
             );
             FileClose(handle);
          }
@@ -198,7 +208,7 @@ public:
    }
 
    // Actualiza MAE/MFE y detecta el cierre
-   void OnTick()
+   void OnTick(CPositionCache *cache = NULL)
    {
       for(int i = m_active_trades.Total() - 1; i >= 0; i--)
       {
@@ -231,6 +241,32 @@ public:
          else
          {
             // La posición se ha cerrado
+            // Si hay caché, capturamos los datos finales antes de borrar
+            if(cache != NULL)
+            {
+               CPositionState *state = cache.Get(trade_data.ticket);
+               if(state != NULL)
+               {
+                  trade_data.r_maximo = state.r_maximo;
+                  trade_data.sma200_val_entry = state.sma200_val;
+                  trade_data.vwap_val_entry = state.vwap_val;
+                  
+                  // Sobrescribir MAE/MFE de precisión si el caché tiene datos mejores
+                  double open_price = state.precio_ent;
+                  double riesgo_pts = MathAbs(state.precio_ent - state.sl_inicial) / _Point;
+                  
+                  if(riesgo_pts > 0)
+                  {
+                     bool es_buy = (state.sl_inicial < state.precio_ent);
+                     double mfe_final_pts = es_buy ? (state.precio_max - open_price) : (open_price - state.precio_min);
+                     double mae_final_pts = es_buy ? (open_price - state.precio_min) : (state.precio_max - open_price);
+                     
+                     if(mfe_final_pts / _Point > trade_data.mfe_pts) trade_data.mfe_pts = mfe_final_pts / _Point;
+                     if(mae_final_pts / _Point > trade_data.mae_pts) trade_data.mae_pts = mae_final_pts / _Point;
+                  }
+               }
+            }
+            
             DetectAndLogClose(trade_data, i);
          }
       }
@@ -309,6 +345,7 @@ private:
             DoubleToString(res_r, 2),
             DoubleToString(trade_data.mae_pts, 1),
             DoubleToString(trade_data.mfe_pts, 1),
+            DoubleToString(trade_data.r_maximo, 2),
             trade_data.sma_trend,
             DoubleToString(trade_data.breakout_volume, 0),
             IntegerToString(duration),
@@ -324,7 +361,9 @@ private:
             DoubleToString(trade_data.dist_yesterday_l, 1),
             IntegerToString(trade_data.consecutive_candles),
             GetDayName(dt.day_of_week),
-            GetMonthName(dt.mon)
+            GetMonthName(dt.mon),
+            DoubleToString(trade_data.sma200_val_entry, _Digits),
+            DoubleToString(trade_data.vwap_val_entry, _Digits)
          );
          FileClose(handle);
          Print("Datos escritos correctamente en carpeta COMMON: ", m_filename);

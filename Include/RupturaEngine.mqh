@@ -9,6 +9,7 @@
 
 #include <Trade/Trade.mqh>
 #include "csv_trade_logger.mqh"
+#include "PositionCache.mqh"
 #include "Constantes.mqh"
 #include "Utilidades.mqh"
 #include "Filtros.mqh"
@@ -36,6 +37,7 @@ private:
    double            m_rango_top;
    double            m_rango_bottom;
    CGestionRiesgoUnified *m_risk_manager;
+   CPositionCache    m_pos_cache;
 
    // --- Métodos Internos ---
    void              ResetearDia();
@@ -204,11 +206,23 @@ void CRupturaEngine::OnTick()
       GestionarCierrePorHora();
 
    // Gestión de SL (Trailing / BE) - Debe ser OnTick para reaccionar al precio al instante
-   AplicarGestionSLDinamico(MagicNumber, usar_mover_sl_a_be, ratio_activacion_be, porcentaje_sl_nuevo);
+   AplicarGestionSLDinamico(MagicNumber, usar_mover_sl_a_be, ratio_activacion_be, porcentaje_sl_nuevo, &m_pos_cache);
 
    // Logger OnTick para capturar MAE/MFE reales
    if(imprimir_csv)
-      m_logger.OnTick();
+   {
+      m_logger.OnTick(&m_pos_cache);
+      
+      // Actualizar métricas del caché
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong ticket = PositionGetTicket(i);
+         if(ticket > 0 && PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+         {
+            m_pos_cache.UpdateMetrics(ticket, PositionGetDouble(POSITION_PRICE_CURRENT));
+         }
+      }
+   }
 
    // 2. OPTIMIZACIÓN: Si hoy no es un día permitido, no seguimos con la lógica de entradas
    // Solo permitimos continuar si el día es válido o si hay posiciones abiertas que gestionar (ya gestionadas arriba)
@@ -653,8 +667,44 @@ void CRupturaEngine::EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points, in
       PrintFormat("[%s] Trade ejecutado correctamente.", nombre_estrategia);
       m_trade_ejecutado_hoy = true;
       
-      if(imprimir_csv && PositionSelectByMagic(MagicNumber))
-         m_logger.SetActiveTicket(PositionGetInteger(POSITION_TICKET));
+      ulong ticket = 0;
+      if(PositionSelectByMagic(MagicNumber))
+         ticket = PositionGetInteger(POSITION_TICKET);
+
+      if(ticket > 0)
+      {
+         m_pos_cache.Add(ticket, precio, sl, tp);
+         CPositionState *state = m_pos_cache.Get(ticket);
+         if(state != NULL)
+         {
+            state.atr_val = GetDailyATR();
+            state.volumen_entrada = m_logger.GetRealVolume(time_frame, 1);
+            state.spread_entrada = (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+            state.consecutive_candles = consec;
+            
+            // SMA200 H1
+            int h_sma = iMA(_Symbol, PERIOD_H1, 200, 0, MODE_SMA, PRICE_CLOSE);
+            if(h_sma != INVALID_HANDLE)
+            {
+               double buf[];
+               if(CopyBuffer(h_sma, 0, 0, 1, buf) > 0) state.sma200_val = buf[0];
+               IndicatorRelease(h_sma);
+            }
+            
+            state.vwap_val = GetDailyVWAP();
+            
+            double digits_sym = SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+            double multiplier_sym = (digits_sym == 3 || digits_sym == 5) ? 10.0 : 1.0;
+            
+            if(tipo == ORDER_TYPE_BUY)
+               state.dist_breakout = (precio - m_rango_top) / (_Point * multiplier_sym);
+            else
+               state.dist_breakout = (m_rango_bottom - precio) / (_Point * multiplier_sym);
+         }
+
+         if(imprimir_csv)
+            m_logger.SetActiveTicket(ticket);
+      }
    }
    else
    {
@@ -681,6 +731,7 @@ void CRupturaEngine::GestionarCierrePorHora()
          if(ticket > 0 && PositionGetInteger(POSITION_MAGIC) == MagicNumber)
          {
             m_trade.PositionClose(ticket);
+            m_pos_cache.Remove(ticket); // Limpiar caché al cerrar
             string ref_str = (modo_horario == MODO_MERCADO) ? "Mercado: " : "Broker: ";
             PrintFormat("[%s] Posición cerrada por fin de sesión (%s%s). Ticket: %d", nombre_estrategia, ref_str, hora_fin_sesion, ticket);
          }

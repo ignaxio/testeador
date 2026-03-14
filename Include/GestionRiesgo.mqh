@@ -213,8 +213,10 @@ double CalcularLotePorRiesgo(int sl_points, double risk_percent)
    return NormalizeDouble(lote, digitos_lote);
 }
 
+#include "PositionCache.mqh"
+
 // --- Gestión de SL Dinámico ---
-void AplicarGestionSLDinamico(long magic, bool activar, double ratio_act, double porc_nuevo)
+void AplicarGestionSLDinamico(long magic, bool activar, double ratio_act, double porc_nuevo, CPositionCache *cache = NULL)
 {
    if(!activar) return;
 
@@ -223,6 +225,13 @@ void AplicarGestionSLDinamico(long magic, bool activar, double ratio_act, double
       ulong ticket = PositionGetTicket(i);
       if(ticket > 0 && PositionGetInteger(POSITION_MAGIC) == magic)
       {
+         // Early Exit usando el caché
+         if(cache != NULL)
+         {
+            CPositionState *state = cache.Get(ticket);
+            if(state != NULL && state.gestionado_sl) continue;
+         }
+
          double precio_ent = PositionGetDouble(POSITION_PRICE_OPEN);
          double sl_actual  = PositionGetDouble(POSITION_SL);
          double tp_actual  = PositionGetDouble(POSITION_TP);
@@ -230,6 +239,15 @@ void AplicarGestionSLDinamico(long magic, bool activar, double ratio_act, double
          ENUM_POSITION_TYPE tipo = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
 
          double distancia_r = MathAbs(precio_ent - sl_actual);
+         
+         // Si tenemos caché, usamos el SL inicial para el cálculo del ratio (más robusto)
+         if(cache != NULL)
+         {
+            CPositionState *state = cache.Get(ticket);
+            if(state != NULL)
+               distancia_r = MathAbs(state.precio_ent - state.sl_inicial);
+         }
+
          if(distancia_r <= 0) continue;
 
          double beneficio_puntos = (tipo == POSITION_TYPE_BUY) ? (precio_act - precio_ent) : (precio_ent - precio_act);
@@ -244,11 +262,18 @@ void AplicarGestionSLDinamico(long magic, bool activar, double ratio_act, double
                nuevo_sl = precio_ent + (distancia_r * (1.0 - (porc_nuevo / 100.0)));
 
             // Verificar si el movimiento es una mejora para evitar errores de modificación
-            if((tipo == POSITION_TYPE_BUY && nuevo_sl > sl_actual + _Point) || (tipo == POSITION_TYPE_SELL && nuevo_sl < sl_actual - _Point))
+            // Además, verificamos que el SL no esté ya en el nivel deseado para evitar bucles (un solo movimiento)
+            bool ya_modificado = (tipo == POSITION_TYPE_BUY) ? (sl_actual >= nuevo_sl - _Point) : (sl_actual <= nuevo_sl + _Point);
+
+            if(!ya_modificado)
             {
                CTrade trade_mod;
                trade_mod.PositionModify(ticket, nuevo_sl, tp_actual);
                Print("SL Dinámico: Ticket ", ticket, " movido a ", nuevo_sl, " (R actual: ", NormalizeDouble(r_actual, 2), ")");
+               
+               // Marcar como gestionado en el caché para Early Exit en el próximo tick
+               if(cache != NULL)
+                  cache.SetManaged(ticket, true);
             }
          }
       }
