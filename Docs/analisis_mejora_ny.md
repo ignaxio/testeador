@@ -68,7 +68,7 @@ Se ha detectado que algunos trades ganadores ocurren en el lado "incorrecto" del
 
 ## 5. Próximos Pasos (Propuesta Técnica)
 
-1.  **Modificar `UnifiedEA.mq5`**: Para que la instancia `engineNY` (Semana) tenga un `opening_range_size_max = 6000`.
+1.  **Modificar `UnifiedEA.mq5`**: Para que la instancia `engineNY` (Semana) tenga un `opening_range_size_mayor_que = 6000`.
 2.  **Mantener `engineNYFridays`**: Sin límite de rango (o uno muy amplio).
 3.  **Backtest de Validación**: Ejecutar una prueba con estos filtros combinados para confirmar que el Profit Factor global de la semana (excluyendo viernes) se estabiliza por encima de 1.50.
 

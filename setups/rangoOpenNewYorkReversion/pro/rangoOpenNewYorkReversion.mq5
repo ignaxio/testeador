@@ -45,11 +45,11 @@ int OnInit()
    // --- Filtros de Entrada (v2.2 / v3.0 Final) ---
    engine.usar_filtro_opening_range_size = true;
    engine.opening_range_size            = 6000;
-   engine.opening_range_size_max        = true;
+   engine.opening_range_size_mayor_que        = true;
 
    engine.usar_filtro_atr               = true;
    engine.atr_limit                     = 18;
-   engine.atr_limit_max                 = false;
+   engine.atr_limit_mayor_que                 = false;
 
    // --- Filtro de Días ---
    engine.permitir_viernes   = false;

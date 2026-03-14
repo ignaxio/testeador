@@ -131,11 +131,11 @@ int OnInit()
    // Filtros
    engine.usar_filtro_opening_range_size = InpUseRangeSize;
    engine.opening_range_size            = InpRangeSizeLimit;
-   engine.opening_range_size_max        = InpRangeSizeIsMax;
+   engine.opening_range_size_mayor_que        = InpRangeSizeIsMax;
    
    engine.usar_filtro_atr               = InpUseATR;
    engine.atr_limit                     = InpATRLimit;
-   engine.atr_limit_max                 = InpATRIsMax;
+   engine.atr_limit_mayor_que                 = InpATRIsMax;
    
    engine.usar_filtro_volumen           = InpUseVolume;
    engine.volumen_limite                = InpVolumeLimit;

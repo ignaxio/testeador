@@ -85,7 +85,7 @@ int OnInit()
       engineLnd.porcentaje_riesgo = InpRiskGroupB;
       engineLnd.usar_filtro_opening_range_size = true;
       engineLnd.opening_range_size = 2000;
-      engineLnd.opening_range_size_max = false;
+      engineLnd.opening_range_size_mayor_que = false;
       engineLnd.usar_filtro_exclusion_rango = true;
       engineLnd.usar_scoring      = false; // Riesgo asignado directamente por Grupo B
       engineLnd.mostrar_profiling = InpProfiling;
@@ -114,7 +114,7 @@ int OnInit()
       engineNY.porcentaje_riesgo  = InpRiskGroupC;
       engineNY.usar_filtro_opening_range_size = true;
       engineNY.opening_range_size = 6000;
-      engineNY.opening_range_size_max = true;
+      engineNY.opening_range_size_mayor_que = true;
       engineNY.permitir_viernes   = false; // Solo de Lunes a Jueves
       engineNY.usar_scoring       = false; // Riesgo asignado directamente por Grupo C
       engineNY.mostrar_profiling  = InpProfiling;

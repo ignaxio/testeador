@@ -49,7 +49,7 @@ int OnInit()
    engine.volumen_limite                = 500;
    engine.usar_filtro_opening_range_size = true;
    engine.opening_range_size            = 2000;
-   engine.opening_range_size_max        = false;
+   engine.opening_range_size_mayor_que        = false;
    engine.usar_filtro_distancia_ruptura  = false;
    engine.distancia_ruptura_maxima      = 10.0;
    engine.usar_filtro_exclusion_rango   = true;
