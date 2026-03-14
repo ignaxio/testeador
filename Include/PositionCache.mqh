@@ -22,6 +22,7 @@ public:
    double   precio_ent;
    double   sl_inicial;
    double   tp_inicial;
+   double   atr_ent;
    
    // Métricas de Recorrido (Live)
    double   r_maximo;
@@ -38,6 +39,7 @@ public:
       r_maximo = 0;
       precio_max = 0;
       precio_min = 0;
+      atr_ent = 0;
    }
 };
 
@@ -54,7 +56,7 @@ public:
    ~CPositionCache() { m_cache.Clear(); }
 
    // Añadir una nueva posición al caché
-   void Add(long ticket_id, double p_ent, double sl_ini, double tp_ini)
+   void Add(long ticket_id, double p_ent, double sl_ini, double tp_ini, double atr_val)
    {
       if(Get(ticket_id) != NULL) return; // Ya existe
 
@@ -63,6 +65,7 @@ public:
       state.precio_ent = p_ent;
       state.sl_inicial = sl_ini;
       state.tp_inicial = tp_ini;
+      state.atr_ent = atr_val;
       state.precio_max = p_ent;
       state.precio_min = p_ent;
       

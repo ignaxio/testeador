@@ -109,6 +109,7 @@ public:
 
 private:
    double            m_profit_restante_actual;
+   double            m_current_atr;
 
    // --- Constructor e Interfaz ---
 public:
@@ -524,8 +525,10 @@ void CRupturaEngine::EvaluarEntrada()
    
    // Validacion de Filtros
    if(!ValidarRangoSize(usar_filtro_opening_range_size, range_in_points, opening_range_size, opening_range_size_mayor_que)) return;
-   double current_atr_val = GetATR(time_frame, 14);
-   if(!ValidarATR(usar_filtro_atr, current_atr_val, atr_limit, atr_limit_mayor_que)) return;
+
+   m_current_atr = GetATR(time_frame, 14);
+
+   if(!ValidarATR(usar_filtro_atr, m_current_atr, atr_limit, atr_limit_mayor_que)) return;
    if(!ValidarExclusionRango(usar_filtro_exclusion_rango, range_in_points)) return;
 
    // Validación de días de la semana y permisos (USANDO CACHE)
@@ -606,7 +609,7 @@ void CRupturaEngine::EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points)
    // Log previo a ejecución
    if(imprimir_csv)
    {
-      m_logger.OnTradeOpen(nombre_estrategia, MagicNumber, tipo, precio, sl, tp, time_frame, range_points);
+      m_logger.OnTradeOpen(nombre_estrategia, MagicNumber, tipo, precio, sl, tp, time_frame, range_points, m_current_atr);
    }
 
    bool resultado;
@@ -626,7 +629,7 @@ void CRupturaEngine::EjecutarOrden(ENUM_ORDER_TYPE tipo, double range_points)
 
       if(ticket > 0)
       {
-         m_pos_cache.Add(ticket, precio, sl, tp);
+         m_pos_cache.Add(ticket, precio, sl, tp, m_current_atr);
 
          if(imprimir_csv)
             m_logger.SetActiveTicket(ticket);

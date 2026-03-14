@@ -28,6 +28,7 @@ public:
    long     magic;
    double   mae_pts;
    double   mfe_pts;
+   double   atr_ent;
    
    // Nuevos campos del Caché
    double   r_maximo;
@@ -46,6 +47,7 @@ public:
       mae_pts = 0;
       mfe_pts = 0;
       r_maximo = 0;
+      atr_ent = 0;
    }
 };
 
@@ -89,7 +91,7 @@ public:
             Print("Creando nuevo archivo CSV en carpeta COMMON: ", m_filename);
             FileWrite(handle, 
                "Strategy", "Magic", "Date", "TimeOpen", "TimeClose", "Direction", "EntryPrice", "StopLoss", "TakeProfit", 
-               "ResultPoints", "ResultR", "MAE_Points", "MFE_Points", "R_Maximo", 
+               "ResultPoints", "ResultR", "MAE_Points", "MFE_Points", "R_Maximo", "ATR_Entry",
                "Duration_Minutes", "OpeningRangeSize", 
                "DayOfWeek", "Month"
             );
@@ -99,7 +101,7 @@ public:
    }
 
    // Captura los datos iniciales cuando se abre una operación
-   void OnTradeOpen(string strategy_name, long magic_num, ENUM_ORDER_TYPE tipo, double price, double sl, double tp, ENUM_TIMEFRAMES tf, double range_size)
+   void OnTradeOpen(string strategy_name, long magic_num, ENUM_ORDER_TYPE tipo, double price, double sl, double tp, ENUM_TIMEFRAMES tf, double range_size, double atr_val)
    {
       CTradeData *new_trade = new CTradeData();
       new_trade.strategy_id = strategy_name;
@@ -112,6 +114,7 @@ public:
       new_trade.range_size = range_size;
       new_trade.mae_pts = 0;
       new_trade.mfe_pts = 0;
+      new_trade.atr_ent = atr_val;
       
       m_active_trades.Add(new_trade);
    }
@@ -167,6 +170,7 @@ public:
                if(state != NULL)
                {
                   trade_data.r_maximo = state.r_maximo;
+                  trade_data.atr_ent = state.atr_ent;
                   
                   // Sobrescribir MAE/MFE de precisión si el caché tiene datos mejores
                   double open_price = state.precio_ent;
@@ -270,6 +274,7 @@ private:
             DoubleToString(trade_data.mae_pts, 1),
             DoubleToString(trade_data.mfe_pts, 1),
             DoubleToString(trade_data.r_maximo, 2),
+            DoubleToString(trade_data.atr_ent, _Digits),
             IntegerToString(duration),
             DoubleToString(trade_data.range_size, 1),
             GetDayName(dt.day_of_week),
